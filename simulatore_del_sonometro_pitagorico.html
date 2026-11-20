@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulatore del Sonometro Pitagorico</title>
+    
+    <!-- Tailwind CSS per layout responsivo e styling moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter per UI pulita e Merriweather per un tocco classico -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- KaTeX per il rendering pulito delle formule matematiche senza mostrare codice grezzo -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <!-- Tone.js per la sintesi sonora realistica a corde pizzicate (Karplus-Strong / PluckSynth) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            /* Previene il bounce/pull-to-refresh indesiderato durante il trascinamento del cavaliere */
+            overscroll-behavior-y: contain;
+        }
+        .font-serif-title {
+            font-family: 'Merriweather', serif;
+        }
+        /* Personalizzazione dello slider per un controllo tattile preciso su smartphone */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #d97706;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            margin-top: -10px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        /* Evita selezione testo durante interazioni touch sul canvas */
+        canvas {
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-50 text-slate-800">
+
+    <!-- Header compatto e chiaro -->
+    <header class="bg-amber-900 text-amber-50 px-4 py-3 shadow-md sticky top-0 z-20">
+        <div class="max-w-lg mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="font-serif-title text-lg sm:text-xl font-bold tracking-tight text-amber-100">
+                    Il Sonometro di Pitagora
+                </h1>
+                <p class="text-xs text-amber-300/90">Acustica, rapporti armonici e fisica delle onde</p>
+            </div>
+            <button id="btn-info" class="p-2.5 bg-amber-800 hover:bg-amber-700 active:bg-amber-950 rounded-full text-amber-100 transition shadow-sm" aria-label="Informazioni storiche">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Contenitore Principale (Ottimizzato Mobile Portrait: flussi verticali ordinati senza sovrapposizioni) -->
+    <main class="flex-grow max-w-lg w-full mx-auto px-3 py-4 flex flex-col gap-4">
+
+        <!-- Sezione 1: Visualizzazione Interattiva dello Strumento (Canvas) -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex justify-between items-center text-xs font-medium text-slate-600">
+                <span>Cassa armònica (L = 60,0 cm)</span>
+                <span id="audio-status" class="inline-flex items-center gap-1.5 text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Tocca la corda
+                </span>
+            </div>
+            
+            <!-- Area Canvas Responsiva -->
+            <div class="relative w-full h-48 sm:h-56 bg-gradient-to-b from-amber-50/40 to-stone-100">
+                <canvas id="sonometerCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Controllo Posizione Cavaliere (Capotasto mobile) -->
+            <div class="p-4 bg-white border-t border-slate-100 flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <label for="bridgeSlider" class="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                        <span class="inline-block w-3 h-3 rounded-sm bg-amber-600"></span>
+                        Posizione Cavaliere
+                    </label>
+                    <button id="toggleBridgeBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition">
+                        Rimuovi Cavaliere
+                    </button>
+                </div>
+                
+                <div class="py-1">
+                    <input type="range" id="bridgeSlider" min="10" max="50" step="0.5" value="30" class="w-full">
+                </div>
+                
+                <div class="flex justify-between text-xs text-slate-500 font-medium">
+                    <span>Sx: <strong id="len-left" class="text-slate-800">30.0 cm</strong></span>
+                    <span>Dx: <strong id="len-right" class="text-slate-800">30.0 cm</strong></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sezione 2: Preset Rapidi Pitagorici (Touch-friendly) -->
+        <section class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Rapporti Pitagorici Classici</h2>
+            <div class="grid grid-cols-4 gap-2">
+                <button data-mode="free" class="preset-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-amber-500 transition active:scale-95">
+                    <span class="text-sm font-bold text-slate-800">1 : 1</span>
+                    <span class="text-[11px] text-slate-500 leading-tight mt-0.5">Libera</span>
+                </button>
+                <button data-mode="octave" class="preset-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-amber-500 bg-amber-50 transition active:scale-95">
+                    <span class="text-sm font-bold text-amber-900">2 : 1</span>
+                    <span class="text-[11px] text-amber-700 leading-tight mt-0.5">Ottava</span>
+                </button>
+                <button data-mode="fifth" class="preset-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-amber-500 transition active:scale-95">
+                    <span class="text-sm font-bold text-slate-800">3 : 2</span>
+                    <span class="text-[11px] text-slate-500 leading-tight mt-0.5">5ª Giusta</span>
+                </button>
+                <button data-mode="fourth" class="preset-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-amber-500 transition active:scale-95">
+                    <span class="text-sm font-bold text-slate-800">4 : 3</span>
+                    <span class="text-[11px] text-slate-500 leading-tight mt-0.5">4ª Giusta</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Sezione 3: Controlli di Pizzico Espliciti (Ideali su smartphone per comparare i due lati) -->
+        <section class="grid grid-cols-2 gap-3" id="pluck-controls">
+            <button id="pluckLeftBtn" class="flex flex-col items-center justify-center py-3.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-2xl shadow-sm transition active:scale-95">
+                <span class="text-xs uppercase tracking-wider text-indigo-200 font-semibold">Pizzica Sinistra</span>
+                <span id="note-left-display" class="text-lg font-bold mt-0.5">Do4 (523 Hz)</span>
+            </button>
+            <button id="pluckRightBtn" class="flex flex-col items-center justify-center py-3.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-2xl shadow-sm transition active:scale-95">
+                <span class="text-xs uppercase tracking-wider text-emerald-200 font-semibold">Pizzica Destra</span>
+                <span id="note-right-display" class="text-lg font-bold mt-0.5">Do4 (523 Hz)</span>
+            </button>
+        </section>
+
+        <!-- Sezione 4: Dati Fisici e Formule Renderizzate (KaTeX) -->
+        <section class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col gap-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h2 class="text-sm font-bold text-slate-800">Analisi Fisica & Armonica</h2>
+                <span id="interval-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900">
+                    Ottava (2:1)
+                </span>
+            </div>
+
+            <!-- Box Formula Renderizzata -->
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80 flex flex-col items-center justify-center text-center">
+                <div id="math-formula-render" class="text-base sm:text-lg text-slate-900 overflow-x-auto max-w-full py-1"></div>
+                <p id="formula-caption" class="text-xs text-slate-500 mt-1">
+                    Dimezzando la lunghezza vibrante, la frequenza raddoppia.
+                </p>
+            </div>
+
+            <!-- Tabella Dati Comparativi -->
+            <div class="grid grid-cols-2 gap-2.5 text-xs">
+                <div class="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100">
+                    <span class="block text-indigo-800 font-semibold mb-1">Sezione Sinistra</span>
+                    <div class="flex justify-between text-slate-600">
+                        <span>Lunghezza:</span>
+                        <strong id="stat-l1" class="text-slate-900">30,0 cm</strong>
+                    </div>
+                    <div class="flex justify-between text-slate-600 mt-0.5">
+                        <span>Frequenza:</span>
+                        <strong id="stat-f1" class="text-indigo-700">523,3 Hz</strong>
+                    </div>
+                </div>
+                <div class="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                    <span class="block text-emerald-800 font-semibold mb-1">Sezione Destra</span>
+                    <div class="flex justify-between text-slate-600">
+                        <span>Lunghezza:</span>
+                        <strong id="stat-l2" class="text-slate-900">30,0 cm</strong>
+                    </div>
+                    <div class="flex justify-between text-slate-600 mt-0.5">
+                        <span>Frequenza:</span>
+                        <strong id="stat-f2" class="text-emerald-700">523,3 Hz</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modale Informativo Storico / Didattico (Nascosto di default) -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl flex flex-col gap-3">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-serif-title text-lg font-bold text-amber-950">L'Esperimento di Pitagora</h3>
+                <button id="closeModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="text-sm text-slate-600 space-y-2.5 leading-relaxed">
+                <p>
+                    Il <strong>sonometro</strong> (o monocordo) è uno strumento antico costituito da una cassa di risonanza su cui è tesa un'unica corda tra due ponticelli fissi (qui distanti <strong>60 cm</strong>).
+                </p>
+                <p>
+                    Un <strong>cavaliere mobile</strong> scorre sotto la corda dividendola in due segmenti vibranti. Pizzicando la corda libera (senza cavaliere) si ottiene la <em>nota fondamentale</em> (qui impostata su <strong>Do3 ≈ 261,6 Hz</strong>).
+                </p>
+                <ul class="list-disc pl-5 space-y-1 text-slate-700">
+                    <li><strong>Ottava (2:1):</strong> Cavaliere a metà (30 cm). La frequenza raddoppia (Do4).</li>
+                    <li><strong>Quinta Giusta (3:2):</strong> La corda vibrante è 2/3 del totale (40 cm). Si ottiene il Sol3.</li>
+                    <li><strong>Quarta Giusta (4:3):</strong> La corda vibrante è 3/4 del totale (45 cm). Si ottiene il Fa3.</li>
+                </ul>
+                <p class="text-xs text-slate-500 pt-1">
+                    Oggi il sonometro è impiegato nella didattica della fisica acustica, nella teoria musicale e nella musicoterapia per la percezione delle consonanze.
+                </p>
+            </div>
+            <button id="closeModalFooterBtn" class="mt-2 w-full py-2.5 bg-amber-800 text-white font-semibold rounded-xl hover:bg-amber-900 transition">
+                Torna all'esperimento
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * LOGICA DELL'APPLICAZIONE: SONOMETRO PITAGORICO
+         * Gestisce il motore audio (Tone.js), il rendering matematico (KaTeX),
+         * la fisica delle onde stazionarie e l'interfaccia Canvas adattiva.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Costanti Fisiche ---
+            const TOTAL_LENGTH_CM = 60.0;
+            const FUNDAMENTAL_FREQ = 261.63; // Do3 (C4 standard scientifico)
+
+            // --- Stato dell'Applicazione ---
+            const state = {
+                hasBridge: true,
+                bridgePosCm: 30.0, // Distanza dal ponticello fisso sinistro (cm)
+                isDraggingBridge: false,
+                audioInitialized: false,
+                // Ampiezze di vibrazione per animazione onda stazionaria
+                ampLeft: 0,
+                ampRight: 0,
+                phaseLeft: 0,
+                phaseRight: 0
+            };
+
+            // --- Riferimenti DOM ---
+            const canvas = document.getElementById('sonometerCanvas');
+            const ctx = canvas.getContext('2d');
+            const bridgeSlider = document.getElementById('bridgeSlider');
+            const toggleBridgeBtn = document.getElementById('toggleBridgeBtn');
+            const lenLeftEl = document.getElementById('len-left');
+            const lenRightEl = document.getElementById('len-right');
+            const pluckLeftBtn = document.getElementById('pluckLeftBtn');
+            const pluckRightBtn = document.getElementById('pluckRightBtn');
+            const noteLeftDisplay = document.getElementById('note-left-display');
+            const noteRightDisplay = document.getElementById('note-right-display');
+            const statL1 = document.getElementById('stat-l1');
+            const statF1 = document.getElementById('stat-f1');
+            const statL2 = document.getElementById('stat-l2');
+            const statF2 = document.getElementById('stat-f2');
+            const intervalBadge = document.getElementById('interval-badge');
+            const mathFormulaRender = document.getElementById('math-formula-render');
+            const formulaCaption = document.getElementById('formula-caption');
+            const audioStatus = document.getElementById('audio-status');
+            const presetBtns = document.querySelectorAll('.preset-btn');
+
+            // Modale
+            const infoModal = document.getElementById('infoModal');
+            document.getElementById('btn-info').addEventListener('click', () => infoModal.classList.remove('hidden'));
+            document.getElementById('closeModalBtn').addEventListener('click', () => infoModal.classList.add('hidden'));
+            document.getElementById('closeModalFooterBtn').addEventListener('click', () => infoModal.classList.add('hidden'));
+
+            // --- Sintetizzatore Audio (Tone.js) ---
+            let synth = null;
+
+            async function initAudio() {
+                if (!state.audioInitialized) {
+                    await Tone.start();
+                    // PluckSynth simula fisicamente la corda pizzicata (algoritmo Karplus-Strong)
+                    synth = new Tone.PluckSynth({
+                        attackNoise: 1.2,
+                        dampening: 3800,
+                        resonance: 0.96
+                    }).toDestination();
+                    state.audioInitialized = true;
+                    audioStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Audio Attivo`;
+                    audioStatus.className = "inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full";
+                }
+            }
+
+            /**
+             * Converte una frequenza in Hz nel nome musicale approssimato (notazione italiana)
+             */
+            function freqToItalianNote(freq) {
+                const notes = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+                const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+                const noteName = notes[((midi % 12) + 12) % 12];
+                const octave = Math.floor(midi / 12) - 2; // Convenzione italiana Do3 = C4
+                return `${noteName}${octave}`;
+            }
+
+            /**
+             * Esegue il pizzico acustico e visuale di un segmento di corda
+             */
+            async function pluckString(side) {
+                await initAudio();
+
+                if (!state.hasBridge) {
+                    // Corda libera intera (60 cm)
+                    synth.triggerAttack(FUNDAMENTAL_FREQ);
+                    state.ampLeft = 18;
+                    state.ampRight = 18;
+                    return;
+                }
+
+                if (side === 'left') {
+                    const l1 = state.bridgePosCm;
+                    const f1 = FUNDAMENTAL_FREQ * (TOTAL_LENGTH_CM / l1);
+                    synth.triggerAttack(f1);
+                    state.ampLeft = 16;
+                } else {
+                    const l2 = TOTAL_LENGTH_CM - state.bridgePosCm;
+                    const f2 = FUNDAMENTAL_FREQ * (TOTAL_LENGTH_CM / l2);
+                    synth.triggerAttack(f2);
+                    state.ampRight = 16;
+                }
+            }
+
+            /**
+             * Renderizza la formula matematica mediante KaTeX (mai codice LaTeX visibile all'utente)
+             */
+            function renderMathFormula(latexStr) {
+                try {
+                    if (window.katex) {
+                        katex.render(latexStr, mathFormulaRender, {
+                            throwOnError: false,
+                            displayMode: false
+                        });
+                    } else {
+                        mathFormulaRender.textContent = "f = f₀ · (L / l)";
+                    }
+                } catch (e) {
+                    console.error("Errore rendering KaTeX:", e);
+                }
+            }
+
+            /**
+             * Aggiorna tutti i parametri numerici, le etichette UI e le formule
+             */
+            function updateUI() {
+                if (!state.hasBridge) {
+                    // Modalità Corda Libera
+                    bridgeSlider.disabled = true;
+                    bridgeSlider.classList.add('opacity-40');
+                    toggleBridgeBtn.textContent = "Inserisci Cavaliere";
+                    toggleBridgeBtn.classList.replace('bg-slate-200', 'bg-amber-600');
+                    toggleBridgeBtn.classList.replace('text-slate-700', 'text-white');
+
+                    lenLeftEl.textContent = "60,0 cm (Intera)";
+                    lenRightEl.textContent = "—";
+
+                    const noteName = freqToItalianNote(FUNDAMENTAL_FREQ);
+                    pluckLeftBtn.classList.add('col-span-2');
+                    pluckLeftBtn.innerHTML = `
+                        <span class="text-xs uppercase tracking-wider text-indigo-200 font-semibold">Pizzica Corda Libera (60 cm)</span>
+                        <span class="text-lg font-bold mt-0.5">${noteName} (${FUNDAMENTAL_FREQ.toFixed(1)} Hz)</span>
+                    `;
+                    pluckRightBtn.classList.add('hidden');
+
+                    statL1.textContent = "60,0 cm";
+                    statF1.textContent = `${FUNDAMENTAL_FREQ.toFixed(1)} Hz`;
+                    statL2.textContent = "—";
+                    statF2.textContent = "—";
+
+                    intervalBadge.textContent = "Fondamentale (1:1)";
+                    renderMathFormula(`f_0 = \\frac{1}{2L}\\sqrt{\\frac{T}{\\mu}} = 261{,}6\\text{ Hz}`);
+                    formulaCaption.textContent = "Corda libera non divisa: emette la frequenza fondamentale.";
+                    highlightPreset('free');
+                    return;
+                }
+
+                // Modalità con Cavaliere attivo
+                bridgeSlider.disabled = false;
+                bridgeSlider.classList.remove('opacity-40');
+                toggleBridgeBtn.textContent = "Rimuovi Cavaliere";
+                toggleBridgeBtn.classList.replace('bg-amber-600', 'bg-slate-200');
+                toggleBridgeBtn.classList.replace('text-white', 'text-slate-700');
+
+                pluckLeftBtn.classList.remove('col-span-2');
+                pluckRightBtn.classList.remove('hidden');
+
+                const l1 = state.bridgePosCm;
+                const l2 = TOTAL_LENGTH_CM - l1;
+                const f1 = FUNDAMENTAL_FREQ * (TOTAL_LENGTH_CM / l1);
+                const f2 = FUNDAMENTAL_FREQ * (TOTAL_LENGTH_CM / l2);
+
+                lenLeftEl.textContent = `${l1.toFixed(1)} cm`;
+                lenRightEl.textContent = `${l2.toFixed(1)} cm`;
+
+                const note1 = freqToItalianNote(f1);
+                const note2 = freqToItalianNote(f2);
+
+                pluckLeftBtn.innerHTML = `
+                    <span class="text-xs uppercase tracking-wider text-indigo-200 font-semibold">Pizzica Sinistra</span>
+                    <span class="text-base sm:text-lg font-bold mt-0.5">${note1} (${f1.toFixed(0)} Hz)</span>
+                `;
+                pluckRightBtn.innerHTML = `
+                    <span class="text-xs uppercase tracking-wider text-emerald-200 font-semibold">Pizzica Destra</span>
+                    <span class="text-base sm:text-lg font-bold mt-0.5">${note2} (${f2.toFixed(0)} Hz)</span>
+                `;
+
+                statL1.textContent = `${l1.toFixed(1)} cm`;
+                statF1.textContent = `${f1.toFixed(1)} Hz`;
+                statL2.textContent = `${l2.toFixed(1)} cm`;
+                statF2.textContent = `${f2.toFixed(1)} Hz`;
+
+                // Riconoscimento rapporti pitagorici notevoli (con tolleranza 0.4 cm)
+                if (Math.abs(l1 - 30.0) < 0.4) {
+                    intervalBadge.textContent = "Ottava (2:1)";
+                    renderMathFormula(`\\frac{f}{f_0} = \\frac{60}{30} = \\frac{2}{1} \\implies f = 523{,}3\\text{ Hz}`);
+                    formulaCaption.textContent = "Pitagora divide a metà: entrambi i lati suonano all'ottava superiore.";
+                    highlightPreset('octave');
+                } else if (Math.abs(l1 - 40.0) < 0.4 || Math.abs(l2 - 40.0) < 0.4) {
+                    intervalBadge.textContent = "Quinta Giusta (3:2)";
+                    renderMathFormula(`\\frac{f}{f_0} = \\frac{60}{40} = \\frac{3}{2} \\implies f = 392{,}4\\text{ Hz}`);
+                    formulaCaption.textContent = "Rapporto 3:2 sulla sezione da 40 cm (Sol3, Quinta giusta rispetto al Do3).";
+                    highlightPreset('fifth');
+                } else if (Math.abs(l1 - 45.0) < 0.4 || Math.abs(l2 - 45.0) < 0.4) {
+                    intervalBadge.textContent = "Quarta Giusta (4:3)";
+                    renderMathFormula(`\\frac{f}{f_0} = \\frac{60}{45} = \\frac{4}{3} \\implies f = 348{,}8\\text{ Hz}`);
+                    formulaCaption.textContent = "Rapporto 4:3 sulla sezione da 45 cm (Fa3, Quarta giusta rispetto al Do3).";
+                    highlightPreset('fourth');
+                } else {
+                    const ratioDx = (TOTAL_LENGTH_CM / l2).toFixed(2);
+                    intervalBadge.textContent = "Rapporto Libero";
+                    renderMathFormula(`f_{dx} = f_0 \\cdot \\frac{L}{l_{dx}} = 261{,}6 \\cdot \\frac{60}{${l2.toFixed(1)}} = ${f2.toFixed(1)}\\text{ Hz}`);
+                    formulaCaption.textContent = `La frequenza è inversamente proporzionale alla lunghezza vibrante.`;
+                    highlightPreset(null);
+                }
+            }
+
+            function highlightPreset(activeMode) {
+                presetBtns.forEach(btn => {
+                    const isMatch = btn.dataset.mode === activeMode;
+                    if (isMatch) {
+                        btn.classList.remove('border-slate-200', 'bg-slate-50');
+                        btn.classList.add('border-amber-500', 'bg-amber-50');
+                    } else {
+                        btn.classList.add('border-slate-200', 'bg-slate-50');
+                        btn.classList.remove('border-amber-500', 'bg-amber-50');
+                    }
+                });
+            }
+
+            // --- Event Listeners Controlli ---
+            bridgeSlider.addEventListener('input', (e) => {
+                state.bridgePosCm = parseFloat(e.target.value);
+                updateUI();
+            });
+
+            toggleBridgeBtn.addEventListener('click', () => {
+                state.hasBridge = !state.hasBridge;
+                updateUI();
+            });
+
+            pluckLeftBtn.addEventListener('click', () => pluckString('left'));
+            pluckRightBtn.addEventListener('click', () => pluckString('right'));
+
+            presetBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    if (mode === 'free') {
+                        state.hasBridge = false;
+                    } else {
+                        state.hasBridge = true;
+                        if (mode === 'octave') state.bridgePosCm = 30.0; // 30 cm / 30 cm (2:1)
+                        if (mode === 'fifth') state.bridgePosCm = 20.0;  // 20 cm sx / 40 cm dx (3:2 a destra)
+                        if (mode === 'fourth') state.bridgePosCm = 15.0; // 15 cm sx / 45 cm dx (4:3 a destra)
+                        bridgeSlider.value = state.bridgePosCm;
+                    }
+                    updateUI();
+                    // Suona la sezione di interesse per feedback immediato
+                    setTimeout(() => pluckString(mode === 'free' ? 'left' : 'right'), 50);
+                });
+            });
+
+            // --- Gestione Canvas Responsiva e Interazione Diretta (Touch & Mouse) ---
+            function resizeCanvas() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+            }
+            window.addEventListener('resize', resizeCanvas);
+
+            // Coordinate geometriche sullo schermo
+            function getGeometry() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const w = rect.width;
+                const h = rect.height;
+                const marginX = Math.max(24, w * 0.07);
+                const startX = marginX;
+                const endX = w - marginX;
+                const stringLenPx = endX - startX;
+                const stringY = h * 0.44;
+                const bridgeX = startX + (state.bridgePosCm / TOTAL_LENGTH_CM) * stringLenPx;
+                return { w, h, startX, endX, stringLenPx, stringY, bridgeX };
+            }
+
+            // Interazione diretta su Canvas: trascina il cavaliere oppure tocca la corda per pizzicarla
+            function handlePointerDown(clientX, clientY) {
+                const rect = canvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                const geo = getGeometry();
+
+                // Controlla se l'utente ha toccato vicino al cavaliere mobile
+                if (state.hasBridge && Math.abs(x - geo.bridgeX) < 28 && y > geo.stringY - 25) {
+                    state.isDraggingBridge = true;
+                    return;
+                }
+
+                // Altrimenti pizzica la corda nel punto toccato
+                if (x >= geo.startX && x <= geo.endX) {
+                    if (!state.hasBridge || x < geo.bridgeX) {
+                        pluckString('left');
+                    } else {
+                        pluckString('right');
+                    }
+                }
+            }
+
+            function handlePointerMove(clientX) {
+                if (!state.isDraggingBridge || !state.hasBridge) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const geo = getGeometry();
+
+                let newCm = ((x - geo.startX) / geo.stringLenPx) * TOTAL_LENGTH_CM;
+                newCm = Math.max(10, Math.min(50, newCm));
+                // Snap magnetico leggero sui valori notevoli (30, 20, 40, 15, 45)
+                const snaps = [15, 20, 30, 40, 45];
+                for (let s of snaps) {
+                    if (Math.abs(newCm - s) < 0.7) {
+                        newCm = s;
+                        break;
+                    }
+                }
+                state.bridgePosCm = Math.round(newCm * 2) / 2;
+                bridgeSlider.value = state.bridgePosCm;
+                updateUI();
+            }
+
+            function handlePointerUp() {
+                state.isDraggingBridge = false;
+            }
+
+            // Eventi Mouse
+            canvas.addEventListener('mousedown', (e) => handlePointerDown(e.clientX, e.clientY));
+            window.addEventListener('mousemove', (e) => handlePointerMove(e.clientX));
+            window.addEventListener('mouseup', handlePointerUp);
+
+            // Eventi Touch
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) {
+                    handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: true });
+            window.addEventListener('touchmove', (e) => {
+                if (state.isDraggingBridge && e.touches.length > 0) {
+                    handlePointerMove(e.touches[0].clientX);
+                }
+            }, { passive: true });
+            window.addEventListener('touchend', handlePointerUp);
+
+            // --- Loop di Animazione Onda Stazionaria ---
+            function drawSonometer() {
+                const geo = getGeometry();
+                ctx.clearRect(0, 0, geo.w, geo.h);
+
+                const boxTop = geo.stringY + 14;
+                const boxHeight = Math.max(36, (geo.h - boxTop) * 0.56);
+                const legHeight = Math.max(14, (geo.h - boxTop) * 0.24);
+                const boxLeft = geo.startX - 16;
+                const boxWidth = geo.stringLenPx + 32;
+
+                // 0. Piano d'appoggio (tavolo chiaro come in foto)
+                const tableY = boxTop + boxHeight + legHeight;
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(0, tableY, geo.w, geo.h - tableY);
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, tableY);
+                ctx.lineTo(geo.w, tableY);
+                ctx.stroke();
+
+                // 1. Piedini sagomati alle estremità in legno scuro
+                ctx.fillStyle = '#2c1e16';
+                // Piedino sinistro
+                ctx.beginPath();
+                ctx.moveTo(boxLeft + 6, boxTop + boxHeight);
+                ctx.lineTo(boxLeft + 26, boxTop + boxHeight);
+                ctx.lineTo(boxLeft + 22, boxTop + boxHeight + legHeight * 0.55);
+                ctx.lineTo(boxLeft + 8, boxTop + boxHeight + legHeight);
+                ctx.lineTo(boxLeft - 2, boxTop + boxHeight + legHeight);
+                ctx.closePath();
+                ctx.fill();
+
+                // Piedino destro
+                ctx.beginPath();
+                ctx.moveTo(boxLeft + boxWidth - 6, boxTop + boxHeight);
+                ctx.lineTo(boxLeft + boxWidth - 26, boxTop + boxHeight);
+                ctx.lineTo(boxLeft + boxWidth - 22, boxTop + boxHeight + legHeight * 0.55);
+                ctx.lineTo(boxLeft + boxWidth - 8, boxTop + boxHeight + legHeight);
+                ctx.lineTo(boxLeft + boxWidth + 2, boxTop + boxHeight + legHeight);
+                ctx.closePath();
+                ctx.fill();
+
+                // 2. Piano superiore della cassa (prospettiva leggermente angolata dall'alto)
+                const topDeckHeight = 10;
+                ctx.fillStyle = '#5c4028';
+                ctx.beginPath();
+                ctx.moveTo(boxLeft + 6, boxTop - topDeckHeight);
+                ctx.lineTo(boxLeft + boxWidth - 6, boxTop - topDeckHeight);
+                ctx.lineTo(boxLeft + boxWidth, boxTop);
+                ctx.lineTo(boxLeft, boxTop);
+                ctx.closePath();
+                ctx.fill();
+
+                // Riga graduata chiara in legno d'acero al centro del piano superiore
+                ctx.fillStyle = '#e7d5b8';
+                ctx.fillRect(geo.startX, boxTop - topDeckHeight + 3, geo.stringLenPx, 4);
+
+                // Tacche della scala graduata sulla riga chiara
+                ctx.fillStyle = '#4a3219';
+                ctx.font = '9px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                for (let cm = 0; cm <= TOTAL_LENGTH_CM; cm += 5) {
+                    const tx = geo.startX + (cm / TOTAL_LENGTH_CM) * geo.stringLenPx;
+                    const isMajor = cm % 10 === 0;
+                    ctx.fillRect(tx - 0.5, boxTop - topDeckHeight + 3, 1, isMajor ? 4 : 2);
+                    if (isMajor) {
+                        ctx.fillStyle = '#d6c3a5';
+                        ctx.fillText(`${cm}`, tx, boxTop + 12);
+                        ctx.fillStyle = '#4a3219';
+                    }
+                }
+
+                // 3. Facciata frontale della cassa di risonanza in legno di noce scuro
+                const woodGrad = ctx.createLinearGradient(0, boxTop, 0, boxTop + boxHeight);
+                woodGrad.addColorStop(0, '#4a3222');
+                woodGrad.addColorStop(0.5, '#3b2618');
+                woodGrad.addColorStop(1, '#26170e');
+                ctx.fillStyle = woodGrad;
+                ctx.beginPath();
+                ctx.roundRect(boxLeft, boxTop, boxWidth, boxHeight, 3);
+                ctx.fill();
+                ctx.strokeStyle = '#1f120b';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // 4. Tre fori di risonanza circolari frontali (esattamente come nella foto)
+                const holePositions = [0.22, 0.50, 0.78];
+                const holeRadius = Math.min(11, boxHeight * 0.25);
+                const holeY = boxTop + boxHeight * 0.56;
+                holePositions.forEach(ratio => {
+                    const hx = boxLeft + boxWidth * ratio;
+                    // Ombra interna del foro
+                    ctx.fillStyle = '#140c07';
+                    ctx.beginPath();
+                    ctx.arc(hx, holeY, holeRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Leggero bordo smussato in legno
+                    ctx.strokeStyle = '#5e422e';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                });
+
+                // 5. Ponticelli fissi laterali (sponde alte in legno con profilo metallico superiore)
+                function drawFixedBridge(x, isLeft) {
+                    const bWidth = 7;
+                    const offset = isLeft ? -bWidth + 2 : -2;
+                    // Corpo in legno scuro
+                    ctx.fillStyle = '#3d281a';
+                    ctx.fillRect(x + offset, geo.stringY - 2, bWidth, boxTop - geo.stringY + 2);
+                    // Listello superiore chiaro/metallico dove poggia la corda
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(x - 1.5, geo.stringY - 2, 3, 3);
+                }
+                drawFixedBridge(geo.startX, true);
+                drawFixedBridge(geo.endX, false);
+
+                // 6. Disegno della Corda (con onda stazionaria sinusoidale vibrante)
+                ctx.lineWidth = 2.2;
+                ctx.lineCap = 'round';
+
+                if (!state.hasBridge) {
+                    drawVibratingSegment(geo.startX, geo.endX, geo.stringY, state.ampLeft, state.phaseLeft, '#4f46e5');
+                } else {
+                    drawVibratingSegment(geo.startX, geo.bridgeX, geo.stringY, state.ampLeft, state.phaseLeft, '#4f46e5');
+                    drawVibratingSegment(geo.bridgeX, geo.endX, geo.stringY, state.ampRight, state.phaseRight, '#059669');
+                }
+
+                // 7. Cavaliere Mobile a prisma triangolare in legno (come i cunei nella foto)
+                if (state.hasBridge) {
+                    const bx = geo.bridgeX;
+                    const baseHalfW = 13;
+                    const baseY = boxTop - 2;
+                    const apexY = geo.stringY - 1;
+
+                    // Faccia sinistra del prisma triangolare (più illuminata)
+                    ctx.fillStyle = state.isDraggingBridge ? '#d99b52' : '#b8834a';
+                    ctx.beginPath();
+                    ctx.moveTo(bx - baseHalfW, baseY);
+                    ctx.lineTo(bx, baseY);
+                    ctx.lineTo(bx, apexY);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Faccia destra del prisma triangolare (in ombra)
+                    ctx.fillStyle = state.isDraggingBridge ? '#a86f32' : '#7c5027';
+                    ctx.beginPath();
+                    ctx.moveTo(bx, baseY);
+                    ctx.lineTo(bx + baseHalfW, baseY);
+                    ctx.lineTo(bx, apexY);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Contorno netto del cuneo
+                    ctx.strokeStyle = '#3b2313';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(bx - baseHalfW, baseY);
+                    ctx.lineTo(bx + baseHalfW, baseY);
+                    ctx.lineTo(bx, apexY);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    // Cursore tattile sotto il tavolo/cassa per trascinamento agevole su smartphone
+                    ctx.fillStyle = '#d97706';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(bx, tableY + 8, 7, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Decadimento fisico delle vibrazioni
+                state.phaseLeft += 0.65;
+                state.phaseRight += 0.85;
+                state.ampLeft *= 0.94;
+                state.ampRight *= 0.94;
+                if (state.ampLeft < 0.05) state.ampLeft = 0;
+                if (state.ampRight < 0.05) state.ampRight = 0;
+
+                requestAnimationFrame(drawSonometer);
+            }
+
+            function drawVibratingSegment(x1, x2, y, amp, phase, color) {
+                const len = x2 - x1;
+                if (len <= 0) return;
+
+                // Alone di vibrazione quando pizzicata
+                if (amp > 0.5) {
+                    ctx.save();
+                    ctx.strokeStyle = color;
+                    ctx.globalAlpha = Math.min(0.25, amp / 40);
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y);
+                    ctx.quadraticCurveTo(x1 + len / 2, y - amp, x2, y);
+                    ctx.quadraticCurveTo(x1 + len / 2, y + amp, x1, y);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                const steps = 40;
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const px = x1 + t * len;
+                    // Onda stazionaria fondamentale: sin(pi * t) * sin(phase)
+                    const displacement = Math.sin(Math.PI * t) * Math.sin(phase) * amp;
+                    const py = y + displacement;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+            }
+
+            // Avvio iniziale
+            window.onload = function() {
+                resizeCanvas();
+                updateUI();
+                drawSonometer();
+            };
+        });
+    </script>
+</body>
+</html>
