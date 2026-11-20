@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Apparecchio di Tesla Storico</title>
+    <!-- Tailwind CSS per un'interfaccia moderna e pulita -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js per la simulazione 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Font Google Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        canvas { display: block; width: 100%; height: 100%; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen overflow-hidden flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg z-10">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight text-amber-400 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Apparecchio di Tesla per Esperienze ad Alta Frequenza
+            </h1>
+            <p class="text-xs text-slate-400">Museo Virtuale della Fisica - Modello Storico Didattico</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-toggle" class="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded-lg font-medium shadow-md transition transform active:scale-95 flex items-center gap-2">
+                <span id="btn-icon">⚡</span> <span id="btn-text">Accendi Apparecchio</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col lg:flex-row relative">
+
+        <!-- Canvas 3D Container -->
+        <div id="canvas-container" class="flex-1 relative bg-gradient-to-b from-slate-950 to-slate-900 cursor-grab active:cursor-grabbing">
+            <!-- Overlay Info tooltip di aiuto -->
+            <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md border border-slate-700 p-3 rounded-xl text-xs shadow-lg max-w-xs pointer-events-none">
+                <p class="font-semibold text-amber-300 mb-1">🎮 Come interagire:</p>
+                <p class="text-slate-300">Trascina con il mouse per ruotare la vista 3D. Usa la rotellina per zoomare. Clicca sui componenti per ispezionarli.</p>
+            </div>
+        </div>
+
+        <!-- Pannello di Controllo e Didattico Laterale -->
+        <div class="w-full lg:w-96 bg-slate-800 border-t lg:border-t-0 lg:border-l border-slate-700 p-6 flex flex-col justify-between overflow-y-auto shadow-2xl">
+            <div class="space-y-6">
+                <!-- Sezione Controlli Elettrici -->
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-200 mb-3 border-b border-slate-700 pb-2">Pannello di Controllo</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-slate-300">Intensità Corrente Primaria</span>
+                                <span id="val-current" class="text-amber-400 font-mono">5.0 A</span>
+                            </div>
+                            <input id="slider-current" type="range" min="1" max="10" step="0.1" value="5.0" class="w-full accent-amber-500 cursor-pointer">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-slate-300">Frequenza di Oscillazione</span>
+                                <span id="val-freq" class="text-amber-400 font-mono">150 kHz</span>
+                            </div>
+                            <input id="slider-freq" type="range" min="50" max="300" step="5" value="150" class="w-full accent-amber-500 cursor-pointer">
+                        </div>
+
+                        <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700 flex justify-between items-center">
+                            <span class="text-xs text-slate-400">Stato Archente:</span>
+                            <span id="status-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-900/50 text-red-300 border border-red-700">SPENTO</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sezione Scheda Didattica (Modificata Dinamicamente al Click) -->
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                    <h3 id="info-title" class="text-sm font-bold text-amber-400 mb-2 flex items-center gap-2">
+                        <span>🔍</span> Ispeziona un Componente
+                    </h3>
+                    <p id="info-desc" class="text-xs text-slate-300 leading-relaxed">
+                        Clicca su qualsiasi parte dell'apparecchio 3D (Rocchetto d'induzione, Cilindri in vetro ambrato, Sferette terminali o Base in legno) per visualizzarne la descrizione storica e il principio di funzionamento fisico.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Footer / Autore info -->
+            <div class="mt-6 pt-4 border-t border-slate-700 text-center text-xs text-slate-500">
+                Simulazione Storica Didattica interattiva • Three.js WebGL
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script JavaScript Principale -->
+    <script>
+        // --- 1. SETUP DELL'AMBIENTE 3D THREE.JS ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0f1d);
+        scene.fog = new THREE.FogExp2(0x0a0f1d, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 4, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // Illuminazione
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffaed, 1.2);
+        dirLight.position.set(10, 15, 10);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const bluePointLight = new THREE.PointLight(0x3b82f6, 0, 10);
+        bluePointLight.position.set(0, 3, 0);
+        scene.add(bluePointLight);
+
+        // --- 2. COSTRUZIONE DEL MODELLO 3D (APPARECCHIO DI TESLA) ---
+        const apparatusGroup = new THREE.Group();
+        scene.add(apparatusGroup);
+
+        // Materiali
+        const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6, metalness: 0.1 });
+        const darkMetalMaterial = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.8 });
+        const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.9 });
+        const silverMetalMaterial = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, roughness: 0.2, metalness: 0.95 });
+        const amberGlassMaterial = new THREE.MeshPhysicalMaterial({ 
+            color: 0xf59e0b, 
+            transmission: 0.7, 
+            opacity: 1, 
+            transparent: true, 
+            roughness: 0.1, 
+            ior: 1.5 
+        });
+        const insulatorMaterial = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.8 });
+
+        // Dati interattivi per la modalità didattica
+        const interactiveParts = [];
+
+        // 1. BASE IN LEGNO
+        const baseGeo = new THREE.BoxGeometry(11, 0.4, 5);
+        const baseMesh = new THREE.Mesh(baseGeo, woodMaterial);
+        baseMesh.position.y = -0.2;
+        baseMesh.castShadow = true;
+        baseMesh.receiveShadow = true;
+        baseMesh.userData = {
+            name: "Base in Legno Rettangolare",
+            desc: "Solida base in legno massello con bordi smussati e piedini di supporto, progettata per sorreggere stabilmente tutti i componenti elettrici e isolanti dell'apparecchio."
+        };
+        apparatusGroup.add(baseMesh);
+        interactiveParts.push(baseMesh);
+
+        // Etichetta museale sulla base
+        const labelGeo = new THREE.BoxGeometry(2, 0.02, 0.6);
+        const labelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+        labelMesh.position.set(0, 0.01, 2.1);
+        apparatusGroup.add(labelMesh);
+
+        // 2. ROCCHETTO D'INDUZIONE (SINISTRA)
+        const inductionGroup = new THREE.Group();
+        inductionGroup.position.set(-3.5, 0.5, 0);
+        inductionGroup.userData = {
+            name: "Rocchetto d'Induzione",
+            desc: "Generatore di tensione iniziale a induzione elettromagnetica. Converte la bassa tensione continua della batteria in impulsi ad alta tensione tramite un interruttore a mart D'Arsonval."
+        };
+
+        // Piedini isolanti del rocchetto
+        const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6), insulatorMaterial);
+        leg1.position.set(-1, -0.3, 0.8);
+        inductionGroup.add(leg1);
+        const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6), insulatorMaterial);
+        leg2.position.set(1, -0.3, 0.8);
+        inductionGroup.add(leg2);
+        const leg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6), insulatorMaterial);
+        leg3.position.set(0, -0.3, -0.8);
+        inductionGroup.add(leg3);
+
+        // Corpo cilindrico principale del rocchetto
+        const coilBodyGeo = new THREE.CylinderGeometry(0.7, 0.7, 2.8, 32);
+        coilBodyGeo.rotateZ(Math.PI / 2);
+        const coilBody = new THREE.Mesh(coilBodyGeo, darkMetalMaterial);
+        inductionGroup.add(coilBody);
+
+        // Manopola di regolazione
+        const knobGeo = new THREE.CylinderGeometry(0.3, 0.4, 0.3, 16);
+        knobGeo.rotateZ(Math.PI / 2);
+        const knob = new THREE.Mesh(knobGeo, brassMaterial);
+        knob.position.set(1.6, 0, 0);
+        inductionGroup.add(knob);
+
+        // Terminali in ottone superiori del rocchetto
+        const termGeo = new THREE.SphereGeometry(0.12, 16, 16);
+        const term1 = new THREE.Mesh(termGeo, brassMaterial);
+        term1.position.set(-0.5, 0.9, 0);
+        inductionGroup.add(term1);
+
+        apparatusGroup.add(inductionGroup);
+        interactiveParts.push(coilBody, knob);
+
+        // 3. TORRI GEMELLE CON CILINDRI IN VETRO AMBRA (CENTRO-DESTRA)
+        const towersGroup = new THREE.Group();
+        towersGroup.position.set(1.8, 0, 0);
+
+        function createTower(offsetX) {
+            const tower = new THREE.Group();
+            tower.position.set(offsetX, 0, 0);
+
+            // Base inferiore metallica argentata
+            const lowerMetalGeo = new THREE.CylinderGeometry(1.1, 1.1, 1.8, 32);
+            const lowerMetal = new THREE.Mesh(lowerMetalGeo, silverMetalMaterial);
+            lowerMetal.position.y = 0.9;
+            tower.add(lowerMetal);
+
+            // Flangia e supporti verticali
+            const flangeGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.1, 32);
+            const flange = new THREE.Mesh(flangeGeo, silverMetalMaterial);
+            flange.position.y = 1.8;
+            tower.add(flange);
+
+            // Cilindro superiore in vetro color ambra
+            const glassGeo = new THREE.CylinderGeometry(1.0, 1.0, 2.0, 32, 1, true);
+            const glass = new THREE.Mesh(glassGeo, amberGlassMaterial);
+            glass.position.y = 2.9;
+            glass.userData = {
+                name: "Cilindro in Vetro Ambra",
+                desc: "Contenitore isolante in vetro color ambra che protegge e isola i risonatori a bobina ad alta frequenza interni, permettendo al contempo l'osservazione visiva delle scariche."
+            };
+            tower.add(glass);
+            interactiveParts.push(glass);
+
+            // Componente interno (bobina risonante)
+            const innerCoilGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.6, 16);
+            const innerCoil = new THREE.Mesh(innerCoilGeo, brassMaterial);
+            innerCoil.position.y = 2.9;
+            tower.add(innerCoil);
+
+            // Coperchio superiore
+            const topCap = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.1, 32), silverMetalMaterial);
+            topCap.position.y = 3.9;
+            tower.add(topCap);
+
+            // Asta verticale in ottone
+            const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5), brassMaterial);
+            rod.position.y = 4.7;
+            tower.add(rod);
+
+            // Sferetta terminale superiore
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.25, 32, 32), brassMaterial);
+            sphere.position.y = 5.5;
+            sphere.userData = {
+                name: "Sferetta Terminale Superiore",
+                desc: "Terminale sferico in ottone lucido utilizzato per la capacità di carico terminale e per generare scariche a scintilla in aria ad alta frequenza."
+            };
+            tower.add(sphere);
+            interactiveParts.push(sphere);
+
+            return tower;
+        }
+
+        const towerLeft = createTower(-1.2);
+        const towerRight = createTower(1.2);
+        towersGroup.add(towerLeft, towerRight);
+        apparatusGroup.add(towersGroup);
+
+        // 4. BARRA TRASVERSALE E COLLEGAMENTI SUPERIORI
+        const barGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.5);
+        barGeo.rotateZ(Math.PI / 2);
+        const topBar = new THREE.Mesh(barGeo, brassMaterial);
+        topBar.position.set(1.8, 5.5, 0);
+        apparatusGroup.add(topBar);
+
+        // Sfera centrale di connessione
+        const centralSphere = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 32), brassMaterial);
+        centralSphere.position.set(1.8, 5.5, 0);
+        centralSphere.userData = {
+            name: "Nodo di Connessione Centrale",
+            desc: "Punto di diramazione e giunzione dei circuiti risonanti per la distribuzione delle correnti ad alta frequenza."
+        };
+        apparatusGroup.add(centralSphere);
+        interactiveParts.push(centralSphere);
+
+        // Cavi di collegamento isolati in nero
+        const curvePath = new THREE.QuadraticBezierCurve3(
+            new THREE.Vector3(-4.0, 1.4, 0),
+            new THREE.Vector3(-1.0, 0.5, 1.2),
+            new THREE.Vector3(0.6, 1.5, 0)
+        );
+        const tubeGeo = new THREE.TubeGeometry(curvePath, 64, 0.05, 8, false);
+        const blackCable = new THREE.Mesh(tubeGeo, darkMetalMaterial);
+        apparatusGroup.add(blackCable);
+
+        const curvePath2 = new THREE.QuadraticBezierCurve3(
+            new THREE.Vector3(0.6, 1.5, 0),
+            new THREE.Vector3(1.2, 4.0, 0),
+            new THREE.Vector3(1.8, 5.5, 0)
+        );
+        const tubeGeo2 = new THREE.TubeGeometry(curvePath2, 64, 0.05, 8, false);
+        const blackCable2 = new THREE.Mesh(tubeGeo2, darkMetalMaterial);
+        apparatusGroup.add(blackCable2);
+
+
+        // --- 3. SISTEMA DI SCINTILLE E ARCHI ELETTRICI (EFFETTO ACCENSIONE) ---
+        let isApparatusActive = false;
+        const sparksGroup = new THREE.Group();
+        apparatusGroup.add(sparksGroup);
+
+        function createSparkEffect() {
+            // Rimuovi scintille precedenti
+            while(sparksGroup.children.length > 0) { 
+                sparksGroup.remove(sparksGroup.children[0]); 
+            }
+
+            if (!isApparatusActive) return;
+
+            // Generazione di fulmini casuali tra le due sfere superiori
+            const sparkMat = new THREE.MeshBasicMaterial({ color: 0x93c5fd });
+            const p1 = new THREE.Vector3(0.6, 5.5, 0);
+            const p2 = new THREE.Vector3(3.0, 5.5, 0);
+            
+            const points = [p1];
+            let current = p1.clone();
+            const steps = 8;
+            for(let i=1; i<steps; i++) {
+                const alpha = i / steps;
+                const intermediate = new THREE.Vector3().lerpVectors(p1, p2, alpha);
+                intermediate.x += (Math.random() - 0.5) * 0.4;
+                intermediate.y += (Math.random() - 0.5) * 0.4;
+                intermediate.z += (Math.random() - 0.5) * 0.4;
+                points.push(intermediate);
+            }
+            points.push(p2);
+
+            const curve = new THREE.CatmullRomCurve3(points);
+            const sparkGeo = new THREE.TubeGeometry(curve, 20, 0.03, 6, false);
+            const sparkMesh = new THREE.Mesh(sparkGeo, sparkMat);
+            sparksGroup.add(sparkMesh);
+        }
+
+
+        // --- 4. GESTIONE INTERATTIVITÀ E CONTROLLI UI ---
+        const btnToggle = document.getElementById('btn-toggle');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnText = document.getElementById('btn-text');
+        const statusBadge = document.getElementById('status-badge');
+        const sliderCurrent = document.getElementById('slider-current');
+        const valCurrent = document.getElementById('val-current');
+        const sliderFreq = document.getElementById('slider-freq');
+        const valFreq = document.getElementById('val-freq');
+        const infoTitle = document.getElementById('info-title');
+        const infoDesc = document.getElementById('info-desc');
+
+        sliderCurrent.addEventListener('input', (e) => {
+            valCurrent.innerText = parseFloat(e.target.value).toFixed(1) + " A";
+        });
+
+        sliderFreq.addEventListener('input', (e) => {
+            valFreq.innerText = e.target.value + " kHz";
+        });
+
+        btnToggle.addEventListener('click', () => {
+            isApparatusActive = !isApparatusActive;
+            if (isApparatusActive) {
+                btnToggle.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btnToggle.classList.add('bg-red-600', 'hover:bg-red-500');
+                btnIcon.innerText = "🔌";
+                btnText.innerText = "Spegni Apparecchio";
+                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-900/50 text-emerald-300 border border-emerald-700 animate-pulse";
+                statusBadge.innerText = "ATTIVO (ALTA FREQUENZA)";
+                bluePointLight.intensity = 2.5;
+                amberGlassMaterial.emissive.setHex(0xf59e0b);
+                amberGlassMaterial.emissiveIntensity = 0.4;
+            } else {
+                btnToggle.classList.remove('bg-red-600', 'hover:bg-red-500');
+                btnToggle.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                btnIcon.innerText = "⚡";
+                btnText.innerText = "Accendi Apparecchio";
+                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-red-900/50 text-red-300 border border-red-700";
+                statusBadge.innerText = "SPENTO";
+                bluePointLight.intensity = 0;
+                amberGlassMaterial.emissiveIntensity = 0;
+                while(sparksGroup.children.length > 0) { sparksGroup.remove(sparksGroup.children[0]); }
+            }
+        });
+
+        // Raycasting per il click sui componenti 3D
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (event) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
+
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveParts, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj && !obj.userData?.name && obj.parent) {
+                    obj = obj.parent;
+                }
+                if (obj && obj.userData && obj.userData.name) {
+                    infoTitle.innerHTML = `<span>✨</span> ${obj.userData.name}`;
+                    infoDesc.innerText = obj.userData.desc;
+                }
+            }
+        });
+
+
+        // --- 5. GESTIONE ROTAZIONE CAMERA CON MOUSE / TOUCH ---
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationAngleX = 0;
+        let rotationAngleY = 0;
+
+        container.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+
+            rotationAngleX += deltaX * 0.008;
+            rotationAngleY = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, rotationAngleY + deltaY * 0.008));
+
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        // Supporto touch per dispositivi mobili
+        container.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            const deltaX = e.touches[0].clientX - previousMousePosition.x;
+            const deltaY = e.touches[0].clientY - previousMousePosition.y;
+
+            rotationAngleX += deltaX * 0.008;
+            rotationAngleY = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, rotationAngleY + deltaY * 0.008));
+
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        });
+
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        // Zoom con rotellina
+        container.addEventListener('wheel', (e) => {
+            camera.position.z = Math.max(6, Math.min(22, camera.position.z + e.deltaY * 0.005));
+        });
+
+
+        // --- 6. LOOP DI ANIMAZIONE ---
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Calcolo posizione camera orbitale fluida
+            const radius = camera.position.length();
+            camera.position.x = 1.8 + 12 * Math.sin(rotationAngleX) * Math.cos(rotationAngleY);
+            camera.position.y = 2.5 + 12 * Math.sin(rotationAngleY);
+            camera.position.z = 12 * Math.cos(rotationAngleX) * Math.cos(rotationAngleY);
+            camera.lookAt(1.8, 2.0, 0);
+
+            // Generazione scintille casuali se attivo
+            if (isApparatusActive && Math.random() < 0.4) {
+                createSparkEffect();
+                // Effetto sfarfallio luce ambrata
+                amberGlassMaterial.emissiveIntensity = 0.3 + Math.random() * 0.3;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Responsive resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>
