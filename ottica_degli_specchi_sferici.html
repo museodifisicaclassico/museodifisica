@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Ottica degli Specchi Sferici — Laboratorio Interattivo</title>
+    <style>
+        /* =====================================================================
+           1. RESET, VARIABILI & DESIGN SYSTEM MOBILE-FIRST (ZERO DIPENDENZE)
+           ===================================================================== */
+        :root {
+            --bg-wall: #dbe6df;          /* Parete verde salvia del laboratorio */
+            --bg-bench: #e6dfd1;         /* Piano del tavolo da laboratorio */
+            --surface: #ffffff;
+            --surface-alt: #f8fafc;
+            --surface-muted: #f1f5f9;
+            --border: rgba(15, 23, 42, 0.11);
+            --text-main: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --primary: #0f766e;
+            --primary-dark: #115e59;
+            --primary-soft: #f0fdfa;
+            --primary-border: #99f6e4;
+            --accent-amber: #d97706;
+            --accent-sky: #0284c7;
+            --accent-rose: #e11d48;
+            --accent-emerald: #059669;
+            --accent-indigo: #4f46e5;
+            --radius-xl: 18px;
+            --radius-lg: 14px;
+            --radius-md: 10px;
+            --shadow-card: 0 2px 10px rgba(15, 23, 42, 0.06);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(180deg, #e4ede8 0%, #eef2ef 100%);
+            color: var(--text-main);
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1.4;
+        }
+
+        /* Contenitore centrato ottimizzato per smartphone portrait (max 480px) */
+        .app-shell {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 10px 12px 28px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            padding: 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* =====================================================================
+           2. HEADER & SELETTORI RAPIDI
+           ===================================================================== */
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .badge-lab {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--primary);
+            background: var(--primary-soft);
+            border: 1px solid var(--primary-border);
+            padding: 2px 7px;
+            border-radius: 6px;
+        }
+
+        .app-title {
+            margin: 3px 0 0 0;
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+        }
+
+        .btn-reset {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 10px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--surface-muted);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.15s ease;
+        }
+
+        .btn-reset:active {
+            background: #e2e8f0;
+        }
+
+        /* Tab Concavo vs Convesso */
+        .mirror-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 4px;
+            background: var(--surface-muted);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+        }
+
+        .mirror-tab {
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 8px 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            transition: all 0.16s ease;
+        }
+
+        .mirror-tab.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(15, 118, 110, 0.28);
+        }
+
+        .mirror-tab-title {
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .mirror-tab-sub {
+            font-size: 10.5px;
+            opacity: 0.88;
+        }
+
+        /* =====================================================================
+           3. SEZIONE SIMULAZIONE VISIVA (SPECCHIO REALE + SCHEMA RAGGI)
+           ===================================================================== */
+        .sim-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dot-live {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            display: inline-block;
+        }
+
+        .regime-pill {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            background: var(--primary-soft);
+            border: 1px solid var(--primary-border);
+            padding: 2px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        /* Selettore oggetto riflesso */
+        .object-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            background: var(--surface-muted);
+            padding: 3px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .obj-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 6px 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .obj-btn.active {
+            background: #ffffff;
+            color: var(--text-main);
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+        }
+
+        /* Contenitore Canvas Specchio da Laboratorio */
+        .canvas-box {
+            position: relative;
+            width: 100%;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--bg-wall);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .canvas-box.interactive-drag {
+            touch-action: none;
+            cursor: ew-resize;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+        }
+
+        .mirror-caption-bar {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .mirror-caption-bar strong {
+            color: var(--text-main);
+        }
+
+        /* Legenda Raggi */
+        .rays-legend {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            background: var(--surface-alt);
+            padding: 7px 8px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            font-size: 10.5px;
+            color: var(--text-secondary);
+        }
+
+        .ray-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .ray-line-sample {
+            width: 12px;
+            height: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        /* =====================================================================
+           4. CONTROLLI TOUCH (SLIDER, PULSANTI +/- E PRESET)
+           ===================================================================== */
+        .presets-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+
+        .preset-btn {
+            border: 1px solid var(--border);
+            background: var(--surface-muted);
+            color: var(--text-main);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 2px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.14s ease;
+        }
+
+        .preset-btn:active, .preset-btn.active-preset {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .control-label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .control-value-badge {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            background: var(--primary-soft);
+            border: 1px solid var(--primary-border);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface-muted);
+            color: var(--text-main);
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .step-btn:active {
+            background: #e2e8f0;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #cbd5e1;
+            border-radius: 999px;
+            outline: none;
+            touch-action: pan-y;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.28);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.28);
+            cursor: pointer;
+        }
+
+        /* =====================================================================
+           5. RISULTATI & FORMULE RENDERIZZATE CON FRAZIONI VERTICALI REALI
+           ===================================================================== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .stat-box {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px 4px;
+            text-align: center;
+        }
+
+        .stat-kicker {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .stat-val {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-top: 2px;
+        }
+
+        .numeric-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: var(--primary-soft);
+            border: 1px solid var(--primary-border);
+            border-radius: var(--radius-md);
+            padding: 8px 4px;
+            text-align: center;
+        }
+
+        .num-item:nth-child(2) {
+            border-left: 1px solid rgba(15, 118, 110, 0.18);
+            border-right: 1px solid rgba(15, 118, 110, 0.18);
+        }
+
+        .num-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .num-reading {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-top: 2px;
+        }
+
+        /* Tipografia matematica pura HTML/CSS (ZERO codice LaTeX) */
+        .formula-card {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .math-expr {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 16px;
+            color: var(--text-main);
+        }
+
+        .math-var {
+            font-style: italic;
+            font-weight: 700;
+        }
+
+        .math-var sub {
+            font-style: normal;
+            font-size: 0.72em;
+            vertical-align: sub;
+        }
+
+        .math-frac {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            text-align: center;
+            line-height: 1.08;
+        }
+
+        .math-num {
+            border-bottom: 1.5px solid currentColor;
+            padding: 0 4px 2px 4px;
+            font-size: 0.88em;
+        }
+
+        .math-den {
+            padding: 2px 4px 0 4px;
+            font-size: 0.88em;
+        }
+
+        .math-mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12.5px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <main class="app-shell">
+
+        <!-- =================================================================
+             1. INTESTAZIONE E SCELTA SPECCHIO (CONCAVO / CONVESSO)
+             ================================================================= -->
+        <header class="card">
+            <div class="header-top">
+                <div>
+                    <span class="badge-lab">Laboratorio di Fisica • Ottica</span>
+                    <h1 class="app-title">Specchi Sferici</h1>
+                </div>
+                <button type="button" id="btn-reset" class="btn-reset" aria-label="Ripristina parametri iniziali">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.49 9A9 9 0 005.64 5.64L4 7m16 10l-1.64 1.36A9 9 0 013.51 15"/>
+                    </svg>
+                    Reset
+                </button>
+            </div>
+
+            <div class="mirror-tabs" role="tablist">
+                <button type="button" id="tab-concave" class="mirror-tab active" role="tab" aria-selected="true">
+                    <span class="mirror-tab-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                            <path d="M16 3C11 7 11 17 16 21" stroke-linecap="round"/>
+                        </svg>
+                        Specchio Concavo
+                    </span>
+                    <span class="mirror-tab-sub">Convergente (<i style="font-family:Georgia,serif">f</i> &gt; 0)</span>
+                </button>
+
+                <button type="button" id="tab-convex" class="mirror-tab" role="tab" aria-selected="false">
+                    <span class="mirror-tab-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                            <path d="M11 3C16 7 16 17 11 21" stroke-linecap="round"/>
+                        </svg>
+                        Specchio Convesso
+                    </span>
+                    <span class="mirror-tab-sub">Divergente (<i style="font-family:Georgia,serif">f</i> &lt; 0)</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- =================================================================
+             2. VISTA FRONTALE DELLO SPECCHIO IN SÉ + SCHEMA DEI RAGGI OTTICI
+             ================================================================= -->
+        <section class="card">
+            <!-- Barra superiore con selettore soggetto riflesso -->
+            <div class="sim-header-bar">
+                <span class="section-label">
+                    <span class="dot-live"></span>
+                    1. Lo Specchio &amp; il Riflesso Reale
+                </span>
+                <span id="regime-pill" class="regime-pill">p &gt; C (Capovolta, ridotta)</span>
+            </div>
+
+            <!-- Selettore soggetto osservato nello specchio -->
+            <div class="object-selector" role="group" aria-label="Soggetto riflesso nello specchio">
+                <button type="button" class="obj-btn active" data-subject="observer">Osservatore</button>
+                <button type="button" class="obj-btn" data-subject="candle">Candela</button>
+                <button type="button" class="obj-btn" data-subject="arrow">Freccia</button>
+            </div>
+
+            <!-- CANVAS 1: LO SPECCHIO SFERICO DA LABORATORIO SU TREPPIEDE -->
+            <div class="canvas-box">
+                <canvas id="mirror-front-canvas"></canvas>
+            </div>
+
+            <!-- Spiegazione immediata di ciò che si osserva dentro lo specchio -->
+            <div id="mirror-caption" class="mirror-caption-bar">
+                Guardando nello <strong>specchio concavo</strong> da laboratorio oltre il centro C, vedi l'immagine <strong>capovolta</strong> e <strong>rimpicciolita</strong>.
+            </div>
+
+            <!-- Separatore visivo per lo schema geometrico dei raggi -->
+            <div class="sim-header-bar" style="margin-top: 2px;">
+                <span class="section-label">2. Tracciamento Raggi (Trascina l'oggetto)</span>
+            </div>
+
+            <!-- CANVAS 2: SCHEMA OTTICO LATERALE INTERATTIVO -->
+            <div class="canvas-box interactive-drag" style="background: #f8fafc;">
+                <canvas id="optics-ray-canvas"></canvas>
+            </div>
+
+            <!-- Legenda compatta 3 raggi -->
+            <div class="rays-legend">
+                <div class="ray-item">
+                    <span class="ray-line-sample" style="background: #e11d48;"></span>
+                    <span>Parallelo &rarr; <b>F</b></span>
+                </div>
+                <div class="ray-item">
+                    <span class="ray-line-sample" style="background: #059669;"></span>
+                    <span>Per <b>F</b> &rarr; Parallelo</span>
+                </div>
+                <div class="ray-item">
+                    <span class="ray-line-sample" style="background: #4f46e5;"></span>
+                    <span>Per <b>C</b> &rarr; Su sé</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================
+             3. CONTROLLI SPERIMENTALI TOUCH-FRIENDLY
+             ================================================================= -->
+        <section class="card">
+            <div class="sim-header-bar">
+                <span class="section-label">Parametri &amp; Casi Notevoli</span>
+            </div>
+
+            <!-- Preset rapidi per tutti i casi notevoli -->
+            <div class="presets-row">
+                <button type="button" class="preset-btn" data-preset="beyondC">p &gt; C</button>
+                <button type="button" class="preset-btn" data-preset="atC">p = C</button>
+                <button type="button" class="preset-btn" data-preset="betweenFC">F &lt; p &lt; C</button>
+                <button type="button" class="preset-btn" data-preset="atF">p = F</button>
+                <button type="button" class="preset-btn" data-preset="insideF">p &lt; F</button>
+            </div>
+
+            <!-- Slider 1: Distanza oggetto p -->
+            <div class="control-group">
+                <div class="control-header">
+                    <label for="slider-p" class="control-label">
+                        Distanza oggetto (<i style="font-family:Georgia,serif">p</i>)
+                    </label>
+                    <span id="val-p-badge" class="control-value-badge">45.0 cm</span>
+                </div>
+                <div class="slider-row">
+                    <button type="button" id="dec-p" class="step-btn" aria-label="Avvicina oggetto">&minus;</button>
+                    <input type="range" id="slider-p" min="5" max="100" step="0.5" value="45">
+                    <button type="button" id="inc-p" class="step-btn" aria-label="Allontana oggetto">+</button>
+                </div>
+            </div>
+
+            <!-- Slider 2: Lunghezza focale |f| -->
+            <div class="control-group">
+                <div class="control-header">
+                    <label for="slider-f" class="control-label">
+                        Lunghezza focale (<i style="font-family:Georgia,serif">f</i>)
+                    </label>
+                    <span id="val-f-badge" class="control-value-badge">+18.0 cm</span>
+                </div>
+                <div class="slider-row">
+                    <button type="button" id="dec-f" class="step-btn" aria-label="Riduci focale">&minus;</button>
+                    <input type="range" id="slider-f" min="10" max="35" step="0.5" value="18">
+                    <button type="button" id="inc-f" class="step-btn" aria-label="Aumenta focale">+</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================
+             4. SCHEDA RISULTATI & FORMULE RENDERIZZATE (FRAZIONI VERTICALI)
+             ================================================================= -->
+        <section class="card">
+            <div class="sim-header-bar">
+                <span class="section-label">Caratteristiche Immagine &amp; Leggi</span>
+                <span style="font-size: 10.5px; color: var(--text-muted); font-weight: 600;">Convenzione Gauss</span>
+            </div>
+
+            <!-- 3 Badge Caratteristiche -->
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-kicker">Natura</div>
+                    <div id="stat-nature" class="stat-val" style="color: var(--primary-dark);">Reale</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-kicker">Orientamento</div>
+                    <div id="stat-orientation" class="stat-val">Capovolta</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-kicker">Dimensione</div>
+                    <div id="stat-size" class="stat-val">Rimpicciolita</div>
+                </div>
+            </div>
+
+            <!-- Letture numeriche -->
+            <div class="numeric-summary">
+                <div class="num-item">
+                    <div class="num-label">Distanza imm. (<i style="font-family:Georgia,serif">q</i>)</div>
+                    <div id="read-q" class="num-reading">+30.0 cm</div>
+                </div>
+                <div class="num-item">
+                    <div class="num-label">Altezza imm. (<i style="font-family:Georgia,serif">h<sub>i</sub></i>)</div>
+                    <div id="read-hi" class="num-reading">-4.0 cm</div>
+                </div>
+                <div class="num-item">
+                    <div class="num-label">Ingrandim. (<i style="font-family:Georgia,serif">G</i>)</div>
+                    <div id="read-g" class="num-reading">-0.67×</div>
+                </div>
+            </div>
+
+            <!-- Equazione dei Punti Coniugati -->
+            <div class="formula-card">
+                <div class="math-expr" aria-label="Equazione dei punti coniugati">
+                    <span class="math-frac">
+                        <span class="math-num">1</span>
+                        <span class="math-den"><span class="math-var">p</span></span>
+                    </span>
+                    <span>+</span>
+                    <span class="math-frac">
+                        <span class="math-num">1</span>
+                        <span class="math-den"><span class="math-var">q</span></span>
+                    </span>
+                    <span>=</span>
+                    <span class="math-frac">
+                        <span class="math-num">1</span>
+                        <span class="math-den"><span class="math-var">f</span></span>
+                    </span>
+                </div>
+
+                <div id="formula-conjugate-values" class="math-expr" style="color: var(--primary-dark);"></div>
+            </div>
+
+            <!-- Equazione dell'Ingrandimento Lineare -->
+            <div class="formula-card">
+                <div class="math-expr" aria-label="Equazione dell'ingrandimento lineare">
+                    <span class="math-var">G</span>
+                    <span>=</span>
+                    <span>&minus;</span>
+                    <span class="math-frac">
+                        <span class="math-num"><span class="math-var">q</span></span>
+                        <span class="math-den"><span class="math-var">p</span></span>
+                    </span>
+                    <span>=</span>
+                    <span class="math-frac">
+                        <span class="math-num"><span class="math-var">h<sub>i</sub></span></span>
+                        <span class="math-den"><span class="math-var">h<sub>o</sub></span></span>
+                    </span>
+                </div>
+
+                <div id="formula-mag-values" class="math-expr" style="color: var(--primary-dark);"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /**
+         * =====================================================================
+         * SIMULAZIONE INTERATTIVA DEGLI SPECCHI SFERICI (CONCAVO & CONVESSO)
+         * Pure HTML5 Canvas + Vanilla JS (60fps, DPR Retina-Ready, Touch-First)
+         * =====================================================================
+         */
+
+        const state = {
+            mirrorType: 'concave', // 'concave' (f > 0) | 'convex' (f < 0)
+            subject: 'observer',   // 'observer' | 'candle' | 'arrow'
+            p: 45.0,               // Distanza oggetto in cm (5..100)
+            fMag: 18.0,            // Modulo lunghezza focale |f| in cm (10..35)
+            ho: 6.0,               // Altezza oggetto reale di riferimento in cm
+            isDragging: false
+        };
+
+        // Riferimenti Canvas
+        const mirrorFrontCanvas = document.getElementById('mirror-front-canvas');
+        const mirrorFrontCtx = mirrorFrontCanvas.getContext('2d');
+
+        const rayCanvas = document.getElementById('optics-ray-canvas');
+        const rayCtx = rayCanvas.getContext('2d');
+
+        // Riferimenti UI
+        const tabConcave = document.getElementById('tab-concave');
+        const tabConvex = document.getElementById('tab-convex');
+        const btnReset = document.getElementById('btn-reset');
+        const regimePill = document.getElementById('regime-pill');
+        const mirrorCaption = document.getElementById('mirror-caption');
+
+        const sliderP = document.getElementById('slider-p');
+        const sliderF = document.getElementById('slider-f');
+        const valPBadge = document.getElementById('val-p-badge');
+        const valFBadge = document.getElementById('val-f-badge');
+
+        const statNature = document.getElementById('stat-nature');
+        const statOrientation = document.getElementById('stat-orientation');
+        const statSize = document.getElementById('stat-size');
+        const readQ = document.getElementById('read-q');
+        const readHi = document.getElementById('read-hi');
+        const readG = document.getElementById('read-g');
+        const formulaConjValues = document.getElementById('formula-conjugate-values');
+        const formulaMagValues = document.getElementById('formula-mag-values');
+
+        // Metriche geometriche dinamiche per entrambi i canvas
+        const frontMetrics = { w: 400, h: 255 };
+        const rayMetrics = { w: 400, h: 225, vertexX: 270, axisY: 112, scale: 2.4 };
+
+        /**
+         * Calcola le grandezze fisiche secondo l'equazione di Gauss:
+         * 1/p + 1/q = 1/f   =>   q = (p * f) / (p - f)
+         * G = -q / p = hi / ho
+         */
+        function computePhysics() {
+            const f = state.mirrorType === 'concave' ? state.fMag : -state.fMag;
+            const p = state.p;
+            const ho = state.ho;
+            const denom = p - f;
+
+            if (Math.abs(denom) < 0.12) {
+                return { f, p, ho, q: Infinity, hi: Infinity, G: Infinity, isInfinity: true };
+            }
+
+            const q = (p * f) / denom;
+            const G = -q / p;
+            const hi = G * ho;
+
+            return { f, p, ho, q, hi, G, isInfinity: false };
+        }
+
+        /**
+         * Ridimensiona i canvas in HD (DevicePixelRatio) evitando qualsiasi taglio o distorsione
+         */
+        function resizeAllCanvases() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 3);
+
+            // 1. Canvas Specchio da Laboratorio
+            const fw = mirrorFrontCanvas.parentElement.clientWidth || 350;
+            const fh = Math.round(Math.max(238, Math.min(275, fw * 0.68)));
+            mirrorFrontCanvas.width = Math.round(fw * dpr);
+            mirrorFrontCanvas.height = Math.round(fh * dpr);
+            mirrorFrontCanvas.style.height = `${fh}px`;
+            mirrorFrontCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            frontMetrics.w = fw;
+            frontMetrics.h = fh;
+
+            // 2. Canvas Tracciamento Raggi
+            const rw = rayCanvas.parentElement.clientWidth || 350;
+            const rh = Math.round(Math.max(210, Math.min(245, rw * 0.60)));
+            rayCanvas.width = Math.round(rw * dpr);
+            rayCanvas.height = Math.round(rh * dpr);
+            rayCanvas.style.height = `${rh}px`;
+            rayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            rayMetrics.w = rw;
+            rayMetrics.h = rh;
+            rayMetrics.axisY = Math.round(rh * 0.52);
+            rayMetrics.vertexX = Math.round(rw * 0.68);
+            rayMetrics.scale = (rayMetrics.vertexX - 22) / 102; // Fino a 100 cm visibili a sinistra
+
+            renderAll();
+        }
+
+        /**
+         * Helper rettangolo arrotondato
+         */
+        function drawRoundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        /**
+         * =====================================================================
+         * RENDERING 1: LO SPECCHIO SFERICO DA LABORATORIO IN SÉ (FRONTALE)
+         * Riproduce fedelmente lo strumento dell'immagine:
+         * - Parete verde salvia e banco da laboratorio beige chiaro
+         * - Treppiede metallico a tre razze in ghisa scura
+         * - Asta cromata con morsetto a vite
+         * - Forcella curva e ghiera circolare nera con pomelli laterali
+         * - Superficie specchiante con distorsione sferica e riflesso in tempo reale
+         * =====================================================================
+         */
+        function renderLabMirrorFront(phys) {
+            const { w, h } = frontMetrics;
+            const ctx = mirrorFrontCtx;
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. Sfondo ambiente laboratorio (parete salvia + banco chiaro in basso)
+            const horizonY = Math.round(h * 0.77);
+            const wallGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+            wallGrad.addColorStop(0, '#a7c0b3');
+            wallGrad.addColorStop(1, '#bdd2c7');
+            ctx.fillStyle = wallGrad;
+            ctx.fillRect(0, 0, w, horizonY);
+
+            // Linea di giunzione tavolo-parete
+            ctx.fillStyle = '#92ab9e';
+            ctx.fillRect(0, horizonY - 2, w, 2);
+
+            // Piano del banco da laboratorio
+            const benchGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+            benchGrad.addColorStop(0, '#e8e0cf');
+            benchGrad.addColorStop(1, '#d7ceb9');
+            ctx.fillStyle = benchGrad;
+            ctx.fillRect(0, horizonY, w, h - horizonY);
+
+            // Geometria dello specchio su treppiede
+            const cx = Math.round(w * 0.5);
+            const mirrorR = Math.round(Math.min(w * 0.24, h * 0.31));
+            const cy = Math.round(mirrorR + 18);
+            const rimThickness = Math.max(7, Math.round(mirrorR * 0.13));
+            const glassR = mirrorR - rimThickness;
+
+            // Ombra ellittica del treppiede sul banco
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(cx, h - 14, mirrorR * 0.85, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 2. Treppiede metallico in ghisa scura (3 piedini come in foto)
+            const baseHubY = h - 22;
+            ctx.save();
+            ctx.strokeStyle = '#1e242b';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 6.5;
+
+            // Gamba sinistra
+            ctx.beginPath();
+            ctx.moveTo(cx, baseHubY);
+            ctx.lineTo(cx - mirrorR * 0.68, h - 12);
+            ctx.stroke();
+
+            // Gamba destra
+            ctx.beginPath();
+            ctx.moveTo(cx, baseHubY);
+            ctx.lineTo(cx + mirrorR * 0.68, h - 12);
+            ctx.stroke();
+
+            // Gamba frontale centrale
+            ctx.beginPath();
+            ctx.moveTo(cx, baseHubY);
+            ctx.lineTo(cx - 4, h - 7);
+            ctx.stroke();
+
+            // Piedini in gomma alle estremità
+            ctx.fillStyle = '#11161b';
+            [
+                [cx - mirrorR * 0.68, h - 12],
+                [cx + mirrorR * 0.68, h - 12],
+                [cx - 4, h - 7]
+            ].forEach(([px, py]) => {
+                ctx.beginPath();
+                ctx.arc(px, py, 4.2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
+
+            // 3. Asta verticale metallica + morsetto di regolazione altezza
+            const yokeBottomY = cy + mirrorR + 10;
+            const rodGrad = ctx.createLinearGradient(cx - 4, 0, cx + 4, 0);
+            rodGrad.addColorStop(0, '#475569');
+            rodGrad.addColorStop(0.45, '#cbd5e1');
+            rodGrad.addColorStop(1, '#334155');
+            ctx.fillStyle = rodGrad;
+            ctx.fillRect(cx - 3.5, yokeBottomY - 2, 7, baseHubY - yokeBottomY + 4);
+
+            // Manicotto e vite di serraggio sull'asta
+            const clampY = Math.round((yokeBottomY + baseHubY) * 0.48);
+            ctx.fillStyle = '#27303f';
+            drawRoundRect(ctx, cx - 6, clampY - 6, 12, 12, 2);
+            ctx.fill();
+            ctx.fillRect(cx - 13, clampY - 2, 7, 4);
+            ctx.beginPath();
+            ctx.arc(cx - 14, clampY, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 4. Forcella a U (giogo di supporto) e pomelli laterali
+            ctx.save();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 4.2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, mirrorR + 9, 0.14 * Math.PI, 0.86 * Math.PI);
+            ctx.stroke();
+
+            // Perni e pomelli zigrinati destra e sinistra
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(cx - mirrorR - 14, cy - 3.5, 14, 7);
+            ctx.fillRect(cx + mirrorR, cy - 3.5, 14, 7);
+            ctx.fillStyle = '#334155';
+            drawRoundRect(ctx, cx - mirrorR - 18, cy - 6, 5, 12, 2);
+            ctx.fill();
+            drawRoundRect(ctx, cx + mirrorR + 13, cy - 6, 5, 12, 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 5. Ghiera circolare nera dello specchio
+            ctx.beginPath();
+            ctx.arc(cx, cy, mirrorR, 0, Math.PI * 2);
+            ctx.fillStyle = '#181c20';
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#374151';
+            ctx.stroke();
+
+            // 6. Superficie specchiante e riflesso dinamico
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, glassR, 0, Math.PI * 2);
+            ctx.clip();
+
+            // Sfondo riflesso dentro lo specchio (stanza del laboratorio riflessa e curvata)
+            const roomGrad = state.mirrorType === 'concave'
+                ? ctx.createRadialGradient(cx, cy, 4, cx, cy, glassR)
+                : ctx.createRadialGradient(cx - 6, cy - 8, 4, cx, cy, glassR);
+
+            roomGrad.addColorStop(0, '#f8fafc');
+            roomGrad.addColorStop(0.65, '#dce5df');
+            roomGrad.addColorStop(1, '#94a3b8');
+            ctx.fillStyle = roomGrad;
+            ctx.fillRect(cx - glassR, cy - glassR, glassR * 2, glassR * 2);
+
+            // Linee prospettiche curve del soffitto/parete riflessi (effetto grandangolo/sferico)
+            ctx.save();
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.25)';
+            ctx.lineWidth = 1.2;
+            const curveSign = state.mirrorType === 'concave' ? -1 : 1;
+            // Se immagine capovolta nel concavo, invertiamo anche lo sfondo riflesso della stanza
+            const bgInvert = (!phys.isInfinity && phys.G < 0) ? -1 : 1;
+            ctx.beginPath();
+            ctx.moveTo(cx - glassR, cy + bgInvert * 14);
+            ctx.quadraticCurveTo(cx, cy + bgInvert * (14 + curveSign * 14), cx + glassR, cy + bgInvert * 14);
+            ctx.stroke();
+
+            // Plafoniera luminosa riflessa (come nella foto di laboratorio)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+            ctx.beginPath();
+            ctx.ellipse(cx + 8, cy - bgInvert * (glassR * 0.56), 14, 4, 0.25 * bgInvert, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Disegno del riflesso dell'oggetto selezionato dentro lo specchio
+            if (phys.isInfinity) {
+                // Nel fuoco: immagine all'infinito -> bagliore sfocato diffuso
+                const blurGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, glassR * 0.9);
+                blurGrad.addColorStop(0, 'rgba(245, 158, 11, 0.75)');
+                blurGrad.addColorStop(0.5, 'rgba(14, 165, 233, 0.35)');
+                blurGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = blurGrad;
+                ctx.fillRect(cx - glassR, cy - glassR, glassR * 2, glassR * 2);
+            } else {
+                // Fattore di scala visivo dentro lo specchio proporzionale a G
+                // Limita la scala massima affinché il dettaglio resti leggibile anche per forti ingrandimenti
+                const visualScale = Math.max(-2.7, Math.min(2.7, phys.G));
+                drawReflectedSubjectInMirror(ctx, cx, cy, glassR, visualScale, state.subject);
+            }
+
+            // Riflesso speculare sul bordo del vetro e ombreggiatura di curvatura 3D
+            const bevelGrad = ctx.createRadialGradient(cx, cy, glassR * 0.72, cx, cy, glassR);
+            bevelGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
+            bevelGrad.addColorStop(1, 'rgba(15, 23, 42, 0.28)');
+            ctx.fillStyle = bevelGrad;
+            ctx.fillRect(cx - glassR, cy - glassR, glassR * 2, glassR * 2);
+
+            ctx.beginPath();
+            ctx.ellipse(cx - glassR * 0.36, cy - glassR * 0.38, glassR * 0.28, glassR * 0.11, -Math.PI / 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.fill();
+
+            ctx.restore();
+
+            // 7. Badge discreto sul tavolo a sinistra/destra per indicare distanza oggetto p
+            ctx.font = '700 10.5px -apple-system, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#334155';
+            ctx.fillText(`p = ${state.p.toFixed(1)} cm`, 10, h - 8);
+
+            ctx.textAlign = 'right';
+            ctx.fillStyle = state.mirrorType === 'concave' ? '#0f766e' : '#0369a1';
+            ctx.fillText(state.mirrorType === 'concave' ? 'CONCAVO' : 'CONVESSO', w - 10, h - 8);
+        }
+
+        /**
+         * Disegna il soggetto riflesso all'interno del cerchio dello specchio
+         * con orientamento (dritta/capovolta) e dimensione proporzionali a G
+         */
+        function drawReflectedSubjectInMirror(ctx, cx, cy, glassR, scaleG, subject) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            // scaleG > 0 -> dritta; scaleG < 0 -> capovolta verticalmente (e specchiata)
+            const absS = Math.abs(scaleG);
+            const signY = scaleG >= 0 ? 1 : -1;
+            ctx.scale(absS, scaleG);
+
+            if (subject === 'observer') {
+                // Figura stilizzata dell'osservatore che tiene uno smartphone (richiamo diretto alla foto!)
+                // Busto / maglietta
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.roundRect ? ctx.roundRect(-14, 4, 28, 26, 6) : ctx.fillRect(-14, 4, 28, 26);
+                ctx.fill();
+
+                // Collo
+                ctx.fillStyle = '#f1c29b';
+                ctx.fillRect(-3.5, -2, 7, 7);
+
+                // Capelli e testa
+                ctx.fillStyle = '#3b2820';
+                ctx.beginPath();
+                ctx.arc(0, -11, 10.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#f5cba7';
+                ctx.beginPath();
+                ctx.arc(0, -10, 8.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Occhi e sorriso
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(-3, -11, 1.1, 0, Math.PI * 2);
+                ctx.arc(3, -11, 1.1, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#7c2d12';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.arc(0, -8.5, 3, 0.15 * Math.PI, 0.85 * Math.PI);
+                ctx.stroke();
+
+                // Smartphone tenuto in mano davanti al busto (come nell'immagine reale)
+                ctx.fillStyle = '#0f172a';
+                drawRoundRect(ctx, -4.5, 5, 9, 15, 2);
+                ctx.fill();
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillRect(-3.2, 6.8, 6.4, 11);
+            } else if (subject === 'candle') {
+                // Candela accesa
+                ctx.fillStyle = '#d97706';
+                drawRoundRect(ctx, -5, -4, 10, 26, 2);
+                ctx.fill();
+
+                // Stoppino
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1.4;
+                ctx.beginPath();
+                ctx.moveTo(0, -4);
+                ctx.lineTo(0, -8);
+                ctx.stroke();
+
+                // Fiamma
+                ctx.beginPath();
+                ctx.moveTo(0, -22);
+                ctx.quadraticCurveTo(6, -13, 0, -7);
+                ctx.quadraticCurveTo(-6, -13, 0, -22);
+                ctx.fillStyle = '#f59e0b';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(0, -18);
+                ctx.quadraticCurveTo(3, -12, 0, -8);
+                ctx.quadraticCurveTo(-3, -12, 0, -18);
+                ctx.fillStyle = '#fef08a';
+                ctx.fill();
+            } else {
+                // Freccia ottica classica
+                ctx.strokeStyle = '#0284c7';
+                ctx.fillStyle = '#0284c7';
+                ctx.lineWidth = 3.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 20);
+                ctx.lineTo(0, -16);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, -23);
+                ctx.lineTo(-7, -12);
+                ctx.lineTo(7, -12);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        /**
+         * =====================================================================
+         * RENDERING 2: SCHEMA GEOMETRICO DEI 3 RAGGI PRINCIPALI (SEZIONE LATERALE)
+         * =====================================================================
+         */
+        function drawRayArrow(ctx, x1, y1, x2, y2, color, dashed = false, arrow = true) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = dashed ? 1.3 : 1.9;
+            if (dashed) {
+                ctx.setLineDash([4, 4]);
+                ctx.globalAlpha = 0.72;
+            }
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            if (arrow && !dashed) {
+                const mx = (x1 + x2) / 2;
+                const my = (y1 + y2) / 2;
+                const ang = Math.atan2(y2 - y1, x2 - x1);
+                const len = 5.5;
+                ctx.beginPath();
+                ctx.moveTo(mx, my);
+                ctx.lineTo(mx - len * Math.cos(ang - Math.PI / 6), my - len * Math.sin(ang - Math.PI / 6));
+                ctx.lineTo(mx - len * Math.cos(ang + Math.PI / 6), my - len * Math.sin(ang + Math.PI / 6));
+                ctx.closePath();
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawStickObject(ctx, x, baseY, heightPx, isImage, isVirtual) {
+            if (Math.abs(heightPx) < 1.5) return;
+            ctx.save();
+            if (isVirtual) ctx.globalAlpha = 0.65;
+
+            const dir = heightPx >= 0 ? -1 : 1;
+            const absH = Math.min(Math.abs(heightPx), rayMetrics.h * 0.44);
+            const tipY = baseY + dir * absH;
+            const color = isImage ? '#0284c7' : '#d97706';
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2.6;
+            if (isVirtual) ctx.setLineDash([3, 2]);
+
+            ctx.beginPath();
+            ctx.moveTo(x, baseY);
+            ctx.lineTo(x, tipY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Punta freccia
+            const head = 5.5;
+            ctx.beginPath();
+            ctx.moveTo(x, tipY);
+            ctx.lineTo(x - 4, tipY - dir * head);
+            ctx.lineTo(x + 4, tipY - dir * head);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        /**
+         * Algoritmo anti-collisione per le etichette lungo l'asse ottico
+         */
+        function drawNonOverlappingLabels(ctx, items, axisY, width) {
+            const sorted = [...items].sort((a, b) => a.x - b.x);
+            const placed = [];
+
+            ctx.font = '700 10.5px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (const item of sorted) {
+                const textW = ctx.measureText(item.text).width;
+                const boxW = textW + 10;
+                const boxH = 17;
+                const cx = Math.max(boxW / 2 + 4, Math.min(width - boxW / 2 - 4, item.x));
+
+                const offsets = item.preferAbove ? [-17, 17, -35, 35] : [17, -17, 35, -35];
+                let chosenY = axisY + offsets[0];
+
+                for (const dy of offsets) {
+                    const cy = axisY + dy;
+                    const rect = {
+                        l: cx - boxW / 2 - 2,
+                        r: cx + boxW / 2 + 2,
+                        t: cy - boxH / 2 - 1,
+                        b: cy + boxH / 2 + 1
+                    };
+                    const hit = placed.some(b => !(rect.r < b.l || rect.l > b.r || rect.b < b.t || rect.t > b.b));
+                    if (!hit) {
+                        chosenY = cy;
+                        placed.push(rect);
+                        break;
+                    }
+                }
+
+                // Pallino punto cardinale sull'asse
+                ctx.beginPath();
+                ctx.arc(item.x, axisY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = item.color;
+                ctx.fill();
+
+                // Pillola etichetta
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = 1;
+                drawRoundRect(ctx, cx - boxW / 2, chosenY - boxH / 2, boxW, boxH, 5);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = item.color;
+                ctx.fillText(item.text, cx, chosenY + 0.5);
+            }
+        }
+
+        function renderOpticsRayCanvas(phys) {
+            const { w, h, vertexX, axisY, scale } = rayMetrics;
+            const ctx = rayCtx;
+            ctx.clearRect(0, 0, w, h);
+
+            // Sfondo spazio reale (sinistra) vs virtuale (destra)
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = 'rgba(226, 232, 240, 0.45)';
+            ctx.fillRect(vertexX, 0, w - vertexX, h);
+
+            // Tacche centimetriche ogni 10 cm
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+            ctx.lineWidth = 1;
+            const step10 = 10 * scale;
+            for (let gx = vertexX; gx > 0; gx -= step10) {
+                ctx.beginPath();
+                ctx.moveTo(gx, 0);
+                ctx.lineTo(gx, h);
+                ctx.stroke();
+            }
+            for (let gx = vertexX + step10; gx < w; gx += step10) {
+                ctx.beginPath();
+                ctx.moveTo(gx, 0);
+                ctx.lineTo(gx, h);
+                ctx.stroke();
+            }
+
+            // Etichette spazi
+            ctx.font = '700 9.5px -apple-system, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'left';
+            ctx.fillText('SPAZIO REALE', 8, 13);
+            ctx.textAlign = 'right';
+            ctx.fillText('VIRTUALE', w - 8, 13);
+
+            // Asse Ottico
+            ctx.beginPath();
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.3;
+            ctx.setLineDash([5, 4]);
+            ctx.moveTo(0, axisY);
+            ctx.lineTo(w, axisY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Coordinate
+            const fX = vertexX - phys.f * scale;
+            const cX = vertexX - 2 * phys.f * scale;
+            const objX = vertexX - phys.p * scale;
+            const heightScale = 5.2; // pixel per cm di altezza oggetto
+            const objTipY = axisY - phys.ho * heightScale;
+
+            // Profilo curvo dello specchio + tratteggio opaco posteriore
+            const halfH = Math.min(h * 0.42, 92);
+            const curve = state.mirrorType === 'concave' ? -11 : 11;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(vertexX + curve, axisY - halfH);
+            ctx.quadraticCurveTo(vertexX - curve, axisY, vertexX + curve, axisY + halfH);
+            ctx.strokeStyle = '#0f766e';
+            ctx.lineWidth = 3.8;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.2;
+            for (let i = 0; i <= 11; i++) {
+                const t = i / 11;
+                const it = 1 - t;
+                const bx = it * it * (vertexX + curve) + 2 * it * t * (vertexX - curve) + t * t * (vertexX + curve);
+                const by = it * it * (axisY - halfH) + 2 * it * t * axisY + t * t * (axisY + halfH);
+                ctx.beginPath();
+                ctx.moveTo(bx + 2, by);
+                ctx.lineTo(bx + 7, by - 4);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            let imgX = null;
+            let imgTipY = null;
+            if (!phys.isInfinity) {
+                imgX = vertexX - phys.q * scale;
+                imgTipY = axisY - phys.hi * heightScale;
+            }
+
+            // RAGGIO 1 (Rosso): Parallelo -> Fuoco F
+            const c1 = '#e11d48';
+            drawRayArrow(ctx, objX, objTipY, vertexX, objTipY, c1, false, true);
+            if (state.mirrorType === 'concave') {
+                const m1 = (axisY - objTipY) / (fX - vertexX);
+                drawRayArrow(ctx, vertexX, objTipY, 0, objTipY + m1 * (0 - vertexX), c1, false, true);
+                if (!phys.isInfinity && phys.q < 0) {
+                    drawRayArrow(ctx, vertexX, objTipY, w, objTipY + m1 * (w - vertexX), c1, true, false);
+                }
+            } else {
+                const m1 = (objTipY - axisY) / (vertexX - fX);
+                drawRayArrow(ctx, vertexX, objTipY, 0, objTipY + m1 * (0 - vertexX), c1, false, true);
+                drawRayArrow(ctx, vertexX, objTipY, fX, axisY, c1, true, false);
+            }
+
+            // RAGGIO 2 (Verde): Fuoco F -> Parallelo
+            const c2 = '#059669';
+            if (!phys.isInfinity) {
+                drawRayArrow(ctx, objX, objTipY, vertexX, imgTipY, c2, false, true);
+                drawRayArrow(ctx, vertexX, imgTipY, 0, imgTipY, c2, false, true);
+                if (phys.q < 0) {
+                    drawRayArrow(ctx, vertexX, imgTipY, w, imgTipY, c2, true, false);
+                }
+            } else {
+                // Raggio al vertice V riflesso simmetricamente
+                drawRayArrow(ctx, objX, objTipY, vertexX, axisY, c2, false, true);
+                const mV = (axisY - objTipY) / (vertexX - objX);
+                drawRayArrow(ctx, vertexX, axisY, 0, axisY - mV * vertexX, c2, false, true);
+            }
+
+            // RAGGIO 3 (Indaco): Centro C -> Su sé stesso
+            const c3 = '#4f46e5';
+            if (Math.abs(objX - cX) > 1.5) {
+                const m3 = (axisY - objTipY) / (cX - objX);
+                const hitY3 = objTipY + m3 * (vertexX - objX);
+                if (Math.abs(hitY3 - axisY) < h * 0.48) {
+                    drawRayArrow(ctx, objX, objTipY, vertexX, hitY3, c3, false, true);
+                    drawRayArrow(ctx, vertexX, hitY3, 0, hitY3 + m3 * (0 - vertexX), c3, false, false);
+                    if (!phys.isInfinity && phys.q < 0) {
+                        drawRayArrow(ctx, vertexX, hitY3, w, hitY3 + m3 * (w - vertexX), c3, true, false);
+                    }
+                }
+            }
+
+            // Oggetto & Immagine
+            drawStickObject(ctx, objX, axisY, phys.ho * heightScale, false, false);
+            if (!phys.isInfinity && imgX !== null && imgX > -120 && imgX < w + 120) {
+                drawStickObject(ctx, imgX, axisY, phys.hi * heightScale, true, phys.q < 0);
+            }
+
+            // Etichette anti-collisione
+            const labels = [
+                { x: vertexX, text: 'V', color: '#0f766e', preferAbove: false },
+                { x: fX, text: 'F', color: '#dc2626', preferAbove: false },
+                { x: cX, text: 'C', color: '#4338ca', preferAbove: false },
+                { x: objX, text: 'Ogg', color: '#b45309', preferAbove: true }
+            ];
+            if (!phys.isInfinity && imgX !== null && imgX >= 8 && imgX <= w - 8) {
+                labels.push({
+                    x: imgX,
+                    text: 'Imm',
+                    color: '#0369a1',
+                    preferAbove: phys.hi < 0
+                });
+            }
+            drawNonOverlappingLabels(ctx, labels, axisY, w);
+        }
+
+        /**
+         * =====================================================================
+         * AGGIORNAMENTO TESTI, BADGE E FORMULE RENDERIZZATE
+         * =====================================================================
+         */
+        function makeFrac(num, den) {
+            return `<span class="math-frac"><span class="math-num math-mono">${num}</span><span class="math-den math-mono">${den}</span></span>`;
+        }
+
+        function updateUI(phys) {
+            valPBadge.textContent = `${state.p.toFixed(1)} cm`;
+            valFBadge.textContent = `${phys.f > 0 ? '+' : ''}${phys.f.toFixed(1)} cm`;
+
+            const fStr = `${phys.f > 0 ? '+' : ''}${phys.f.toFixed(1)}`;
+            const pStr = `${state.p.toFixed(1)}`;
+
+            // Evidenzia preset attivo se corrisponde
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-preset'));
+
+            if (phys.isInfinity) {
+                regimePill.textContent = 'p = F (Immagine all’infinito)';
+                statNature.textContent = 'All’infinito';
+                statNature.style.color = '#b45309';
+                statOrientation.textContent = 'Non definita';
+                statSize.textContent = 'Infinita';
+
+                readQ.textContent = '∞ cm';
+                readHi.textContent = '∞ cm';
+                readG.textContent = '∞';
+
+                formulaConjValues.innerHTML =
+                    makeFrac('1', pStr) + `<span>+</span>` + makeFrac('1', '∞') + `<span>=</span>` + makeFrac('1', fStr);
+                formulaMagValues.innerHTML = `<span class="math-var">G</span><span>=</span><span class="math-mono">∞</span>`;
+
+                mirrorCaption.innerHTML =
+                    `L'oggetto si trova esattamente nel <strong>fuoco F</strong>: i raggi riflessi escono paralleli e dentro lo specchio vedi solo un bagliore diffuso.`;
+                return;
+            }
+
+            const isReal = phys.q > 0;
+            const isUpright = phys.G > 0;
+            const absG = Math.abs(phys.G);
+
+            // Regime pill & descrizione specchio
+            if (state.mirrorType === 'convex') {
+                regimePill.textContent = 'Convesso: sempre virtuale e dritta';
+            } else if (state.p > 2 * state.fMag + 0.3) {
+                regimePill.textContent = 'p > C (Capovolta, ridotta)';
+            } else if (Math.abs(state.p - 2 * state.fMag) <= 0.3) {
+                regimePill.textContent = 'p = C (Capovolta, uguale)';
+            } else if (state.p > state.fMag) {
+                regimePill.textContent = 'F < p < C (Capovolta, ingrandita)';
+            } else {
+                regimePill.textContent = 'p < F (Virtuale, dritta, ingrandita)';
+            }
+
+            statNature.textContent = isReal ? 'Reale' : 'Virtuale';
+            statNature.style.color = isReal ? '#115e59' : '#4338ca';
+            statOrientation.textContent = isUpright ? 'Dritta' : 'Capovolta';
+
+            if (Math.abs(absG - 1) < 0.03) {
+                statSize.textContent = 'Uguale (1×)';
+            } else if (absG > 1) {
+                statSize.textContent = 'Ingrandita';
+            } else {
+                statSize.textContent = 'Rimpicciolita';
+            }
+
+            const qStr = `${phys.q > 0 ? '+' : ''}${phys.q.toFixed(1)}`;
+            const hiStr = `${phys.hi > 0 ? '+' : ''}${phys.hi.toFixed(1)}`;
+            const gStr = `${phys.G > 0 ? '+' : ''}${phys.G.toFixed(2)}`;
+
+            readQ.textContent = `${qStr} cm`;
+            readHi.textContent = `${hiStr} cm`;
+            readG.textContent = `${gStr}×`;
+
+            formulaConjValues.innerHTML =
+                makeFrac('1', pStr) + `<span>+</span>` + makeFrac('1', qStr) + `<span>=</span>` + makeFrac('1', fStr);
+
+            formulaMagValues.innerHTML =
+                `<span class="math-var">G</span><span>=</span>` + makeFrac(hiStr, state.ho.toFixed(1)) + `<span>=</span><span class="math-mono">${gStr}</span>`;
+
+            const orientWord = isUpright ? 'dritta' : 'capovolta';
+            const sizeWord = Math.abs(absG - 1) < 0.03
+                ? 'della stessa dimensione reale'
+                : (absG > 1 ? 'ingrandita' : 'rimpicciolita');
+
+            if (state.mirrorType === 'concave') {
+                mirrorCaption.innerHTML = isReal
+                    ? `Guardando nello <strong>specchio concavo</strong> (a sinistra nella foto), vedi l'immagine <strong>${orientWord}</strong> e <strong>${sizeWord}</strong>.`
+                    : `Tra il fuoco F e il vertice V, lo <strong>specchio concavo</strong> ingrandisce come una lente: immagine <strong>${orientWord}</strong> e <strong>${sizeWord}</strong>.`;
+            } else {
+                mirrorCaption.innerHTML =
+                    `Guardando nello <strong>specchio convesso</strong> (a destra nella foto), vedi sempre un'immagine <strong>${orientWord}</strong> e <strong>${sizeWord}</strong> con campo visivo più ampio.`;
+            }
+        }
+
+        function renderAll() {
+            const phys = computePhysics();
+            renderLabMirrorFront(phys);
+            renderOpticsRayCanvas(phys);
+            updateUI(phys);
+        }
+
+        /**
+         * =====================================================================
+         * EVENTI INTERATTIVI (TAB, SUBJECT, TOUCH DRAG, SLIDER, PRESET)
+         * =====================================================================
+         */
+        function setMirrorType(type) {
+            state.mirrorType = type;
+            if (type === 'concave') {
+                tabConcave.classList.add('active');
+                tabConcave.setAttribute('aria-selected', 'true');
+                tabConvex.classList.remove('active');
+                tabConvex.setAttribute('aria-selected', 'false');
+            } else {
+                tabConvex.classList.add('active');
+                tabConvex.setAttribute('aria-selected', 'true');
+                tabConcave.classList.remove('active');
+                tabConcave.setAttribute('aria-selected', 'false');
+            }
+            renderAll();
+        }
+
+        tabConcave.addEventListener('click', () => setMirrorType('concave'));
+        tabConvex.addEventListener('click', () => setMirrorType('convex'));
+
+        // Selettore soggetto riflesso
+        document.querySelectorAll('.obj-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.obj-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.subject = btn.dataset.subject;
+                renderAll();
+            });
+        });
+
+        // Trascinamento diretto oggetto sul canvas dei raggi
+        function updatePFromPointer(clientX) {
+            const rect = rayCanvas.getBoundingClientRect();
+            const relX = clientX - rect.left;
+            const rawP = (rayMetrics.vertexX - relX) / rayMetrics.scale;
+            const clamped = Math.max(5, Math.min(100, Math.round(rawP * 2) / 2));
+            state.p = clamped;
+            sliderP.value = clamped;
+            renderAll();
+        }
+
+        rayCanvas.addEventListener('pointerdown', (e) => {
+            state.isDragging = true;
+            rayCanvas.setPointerCapture(e.pointerId);
+            updatePFromPointer(e.clientX);
+        });
+        rayCanvas.addEventListener('pointermove', (e) => {
+            if (state.isDragging) updatePFromPointer(e.clientX);
+        });
+        rayCanvas.addEventListener('pointerup', (e) => {
+            if (state.isDragging) {
+                state.isDragging = false;
+                rayCanvas.releasePointerCapture(e.pointerId);
+            }
+        });
+        rayCanvas.addEventListener('pointercancel', () => {
+            state.isDragging = false;
+        });
+
+        // Slider e pulsanti step
+        sliderP.addEventListener('input', (e) => {
+            state.p = parseFloat(e.target.value);
+            renderAll();
+        });
+        document.getElementById('dec-p').addEventListener('click', () => {
+            state.p = Math.max(5, +(state.p - 0.5).toFixed(1));
+            sliderP.value = state.p;
+            renderAll();
+        });
+        document.getElementById('inc-p').addEventListener('click', () => {
+            state.p = Math.min(100, +(state.p + 0.5).toFixed(1));
+            sliderP.value = state.p;
+            renderAll();
+        });
+
+        sliderF.addEventListener('input', (e) => {
+            state.fMag = parseFloat(e.target.value);
+            renderAll();
+        });
+        document.getElementById('dec-f').addEventListener('click', () => {
+            state.fMag = Math.max(10, +(state.fMag - 0.5).toFixed(1));
+            sliderF.value = state.fMag;
+            renderAll();
+        });
+        document.getElementById('inc-f').addEventListener('click', () => {
+            state.fMag = Math.min(35, +(state.fMag + 0.5).toFixed(1));
+            sliderF.value = state.fMag;
+            renderAll();
+        });
+
+        // Preset rapidi
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = btn.dataset.preset;
+                const f = state.fMag;
+                let nextP = state.p;
+
+                if (preset === 'beyondC') nextP = Math.min(100, +(f * 2.6).toFixed(1));
+                if (preset === 'atC') nextP = Math.min(100, +(f * 2.0).toFixed(1));
+                if (preset === 'betweenFC') nextP = Math.min(100, +(f * 1.45).toFixed(1));
+                if (preset === 'atF') nextP = f;
+                if (preset === 'insideF') nextP = Math.max(5, +(f * 0.55).toFixed(1));
+
+                state.p = nextP;
+                sliderP.value = nextP;
+                renderAll();
+                btn.classList.add('active-preset');
+            });
+        });
+
+        // Reset completo
+        btnReset.addEventListener('click', () => {
+            state.p = 45.0;
+            state.fMag = 18.0;
+            state.subject = 'observer';
+            sliderP.value = 45;
+            sliderF.value = 18;
+            document.querySelectorAll('.obj-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.subject === 'observer');
+            });
+            setMirrorType('concave');
+        });
+
+        window.addEventListener('resize', resizeAllCanvases);
+        window.addEventListener('load', resizeAllCanvases);
+    </script>
+</body>
+</html>
