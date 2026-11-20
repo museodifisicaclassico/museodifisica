@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lo Stereoscopio di Brewster</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Playfair Display for headers and Inter for clean UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #2c221e;
+            color: #f3efe6;
+        }
+        h1, h2, h3, .serif-font {
+            font-family: 'Playfair Display', serif;
+        }
+        /* Custom museum scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #231a17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #5c473f;
+            border-radius: 3px;
+        }
+        /* Wood textures & gradients */
+        .wood-bg {
+            background: linear-gradient(135deg, #4a3324 0%, #312117 100%);
+            border: 2px solid #5c4130;
+        }
+        .wood-panel {
+            background: #3b271c;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.6), 0 4px 6px rgba(0,0,0,0.4);
+        }
+        .brass-metal {
+            background: linear-gradient(135deg, #d4af37 0%, #aa820a 50%, #856505 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .dark-metal {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.1), 0 3px 6px rgba(0,0,0,0.5);
+        }
+        /* Vintage image sepia effect */
+        .vintage-filter {
+            filter: sepia(0.6) contrast(1.1) brightness(0.95);
+        }
+        /* Lens distortion simulation */
+        .lens-effect {
+            box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.7), 0 0 10px rgba(0,0,0,0.5);
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-x-hidden selection:bg-amber-800 selection:text-amber-100">
+
+    <!-- Header Museale -->
+    <header class="bg-[#231a17] border-b border-[#5c4130] px-4 py-3 flex flex-col sm:flex-row items-center justify-between shadow-lg z-20">
+        <div class="flex items-center space-x-3 mb-2 sm:mb-0">
+            <div class="w-9 h-9 rounded-full brass-metal flex items-center justify-center text-[#231a17] font-bold shadow">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </div>
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold tracking-wide text-[#e6d5be]">Lo Stereoscopio di Brewster</h1>
+                <p class="text-xs text-[#a38f7d] italic">Modello Ottocentesco ad Handheld (1856)</p>
+            </div>
+        </div>
+
+        <!-- Selettore Modalità di Visualizzazione -->
+        <div class="flex bg-[#1a120f] p-1 rounded-lg border border-[#4a3324] shadow-inner">
+            <button id="btn-mode-overview" onclick="switchMode('overview')" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 bg-[#785942] text-[#f3efe6] shadow">
+                Vista 3D d'Insieme
+            </button>
+            <button id="btn-mode-immersive" onclick="switchMode('immersive')" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md text-[#a38f7d] hover:text-[#f3efe6] transition-all duration-200">
+                Modalità Visore
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-y-auto p-3 sm:p-6 gap-6 max-w-7xl mx-auto w-full">
+
+        <!-- Area Visiva / Simulatore (Sinistra o Principale) -->
+        <div class="flex-1 flex flex-col items-center justify-center bg-[#231a17]/60 rounded-2xl border border-[#4a3324] p-4 relative shadow-xl min-h-[420px] lg:min-h-[550px]">
+            
+            <!-- VISTA 1: Modello 3D / Illustrato della Croce in Legno -->
+            <div id="view-overview" class="w-full h-full flex flex-col items-center justify-center relative transition-all duration-300">
+                
+                <div class="absolute top-3 left-3 bg-[#1a120f]/80 px-3 py-1 rounded-md border border-[#4a3324] text-xs text-[#d1c2b2] flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    Struttura Stereoscopica Interattiva
+                </div>
+
+                <!-- Rappresentazione Visiva del Dispositivo -->
+                <div id="stereoscope-rig" class="relative w-full max-w-md h-[360px] sm:h-[420px] flex flex-col items-center justify-between py-2 select-none">
+                    
+                    <!-- Visore Superiore (Hood & Lenti Prismatiche) -->
+                    <div class="relative w-48 sm:w-56 h-24 dark-metal rounded-t-3xl rounded-b-xl border-2 border-[#5c4130] flex flex-col items-center justify-center shadow-2xl z-10">
+                        <div class="absolute -top-3 px-3 py-0.5 brass-metal text-[10px] font-bold text-[#231a17] rounded uppercase tracking-wider shadow">Visore & Prismi</div>
+                        
+                        <!-- Mascherina oculare con setto divisore -->
+                        <div class="w-40 h-14 bg-[#14100e] rounded-lg border border-[#5c4130] flex items-center justify-between px-3 relative shadow-inner">
+                            <!-- Setto centrale verticale -->
+                            <div class="absolute left-1/2 top-0 bottom-0 w-1 bg-[#2c221e] -translate-x-1/2 border-x border-[#5c4130]/40 z-10"></div>
+                            
+                            <!-- Oculare Sinistro -->
+                            <div class="w-14 h-10 rounded-full lens-effect bg-[#231a17] flex items-center justify-center border border-[#5c4130]/60 overflow-hidden">
+                                <div class="w-8 h-8 rounded-full border border-amber-500/30 flex items-center justify-center text-[9px] text-amber-200/50">L</div>
+                            </div>
+                            <!-- Oculare Destro -->
+                            <div class="w-14 h-10 rounded-full lens-effect bg-[#231a17] flex items-center justify-center border border-[#5c4130]/60 overflow-hidden">
+                                <div class="w-8 h-8 rounded-full border border-amber-500/30 flex items-center justify-center text-[9px] text-amber-200/50">R</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Asse Longitudinale Centrale (Corpo a Croce) -->
+                    <div class="relative w-8 sm:w-10 flex-1 wood-panel rounded my-[-10px] flex flex-col items-center justify-center shadow-inner">
+                        <!-- Intagli graduati dell'asse -->
+                        <div class="w-full h-3/4 flex flex-col justify-around py-2 opacity-40">
+                            <div class="w-full h-[1px] bg-amber-200"></div>
+                            <div class="w-full h-[1px] bg-amber-200"></div>
+                            <div class="w-full h-[1px] bg-amber-200"></div>
+                            <div class="w-full h-[1px] bg-amber-200"></div>
+                            <div class="w-full h-[1px] bg-amber-200"></div>
+                        </div>
+                    </div>
+
+                    <!-- Barra Trasversale Scorrevole (Portavedute con mollette in metallo) -->
+                    <div id="sliding-bar" class="relative w-64 sm:w-72 h-32 wood-bg rounded-lg shadow-2xl flex flex-col items-center justify-center transition-all duration-150 z-20 border-2 border-[#6b4c3b]">
+                        <!-- Mollette in metallo superiori -->
+                        <div class="absolute -top-2 left-6 w-5 h-4 brass-metal rounded-sm shadow"></div>
+                        <div class="absolute -top-2 right-6 w-5 h-4 brass-metal rounded-sm shadow"></div>
+                        
+                        <div class="text-[10px] font-semibold text-amber-200/80 mb-1 tracking-wider">PORTAVEDUTE STEREO</div>
+                        
+                        <!-- Cornice della Diapositiva -->
+                        <div class="w-56 sm:w-64 h-20 bg-[#1a120f] border-2 border-[#5c4130] rounded flex items-center justify-between p-1 shadow-inner relative overflow-hidden">
+                            <!-- Divisore centrale diapositiva -->
+                            <div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-[#2c221e] z-10"></div>
+                            
+                            <!-- Immagine Sinistra Miniature -->
+                            <div class="w-1/2 h-full pr-0.5 overflow-hidden relative flex items-center justify-center bg-black">
+                                <img id="slide-thumb-left" src="" alt="Stereo Left" class="w-full h-full object-cover vintage-filter transition-transform duration-200">
+                            </div>
+                            <!-- Immagine Destra Miniature -->
+                            <div class="w-1/2 h-full pl-0.5 overflow-hidden relative flex items-center justify-center bg-black">
+                                <img id="slide-thumb-right" src="" alt="Stereo Right" class="w-full h-full object-cover vintage-filter transition-transform duration-200">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Impugnatura Inferiore -->
+                    <div class="w-12 sm:w-14 h-16 wood-panel rounded-b-2xl border-t-0 shadow-lg flex items-center justify-center">
+                        <div class="w-3 h-10 rounded-full brass-metal opacity-80"></div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- VISTA 2: Modalità Immersiva nel Visore (Simulazione Ottica) -->
+            <div id="view-immersive" class="hidden w-full h-full flex flex-col items-center justify-center relative transition-all duration-300">
+                <div class="absolute top-2 left-3 bg-[#1a120f]/90 px-3 py-1 rounded-md border border-[#4a3324] text-xs text-[#d1c2b2] z-30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Simulazione Ottica Binoculare Attiva
+                </div>
+
+                <!-- Visore Immersivo Recintato -->
+                <div class="w-full max-w-xl h-[380px] sm:h-[450px] bg-[#14100e] rounded-2xl border-4 border-[#3b271c] p-4 flex flex-col items-center justify-center relative shadow-2xl overflow-hidden lens-effect">
+                    
+                    <!-- Setto Centrale di Separazione -->
+                    <div class="absolute left-1/2 top-0 bottom-0 w-2 bg-[#231a17] -translate-x-1/2 border-x border-[#5c4130]/60 z-20 shadow-2xl flex items-center justify-center">
+                        <div class="h-12 w-0.5 bg-amber-600/40 rounded-full"></div>
+                    </div>
+
+                    <!-- Contenitore delle due immagini oculari -->
+                    <div class="w-full h-full flex items-center justify-between gap-3 px-2 py-4 relative">
+                        
+                        <!-- Oculare Sinistro -->
+                        <div class="flex-1 h-full rounded-xl overflow-hidden border-2 border-[#5c4130] bg-black relative flex items-center justify-center shadow-inner">
+                            <img id="immersive-img-left" src="" alt="Visore Sinistro" class="w-full h-full object-cover vintage-filter transition-all duration-300 transform scale-105">
+                            <div class="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-amber-200 font-mono">SINISTRA</div>
+                        </div>
+
+                        <!-- Oculare Destro -->
+                        <div class="flex-1 h-full rounded-xl overflow-hidden border-2 border-[#5c4130] bg-black relative flex items-center justify-center shadow-inner">
+                            <img id="immersive-img-right" src="" alt="Visore Destro" class="w-full h-full object-cover vintage-filter transition-all duration-300 transform scale-105">
+                            <div class="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-amber-200 font-mono">DESTRA</div>
+                        </div>
+
+                    </div>
+
+                    <div class="absolute bottom-3 bg-[#231a17]/90 px-4 py-1 rounded-full border border-[#5c4130] text-[11px] text-[#e6d5be] z-30 shadow">
+                        Suggerimento: I prismi deviano i raggi per fondere le immagini in un'unica visione 3D.
+                    </div>
+                </div>
+
+                <button onclick="switchMode('overview')" class="mt-4 px-4 py-2 bg-[#5c4130] hover:bg-[#785942] text-[#f3efe6] rounded-xl text-xs sm:text-sm font-medium shadow-md transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    Torna alla Vista Modello
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Pannello di Controllo e Sezione Educativa (Destra) -->
+        <div class="w-full md:w-96 flex flex-col gap-5">
+            
+            <!-- Controlli Interattivi -->
+            <div class="bg-[#231a17] rounded-2xl border border-[#4a3324] p-4 shadow-xl">
+                <h3 class="serif-font text-lg font-bold text-[#e6d5be] mb-3 border-b border-[#4a3324] pb-2 flex items-center justify-between">
+                    <span>Controlli di Precisione</span>
+                    <span class="text-xs font-sans text-amber-400 font-normal">Ottocento Tech</span>
+                </h3>
+
+                <!-- Slider di Fuoco / Distanza -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label for="focus-slider" class="text-xs font-medium text-[#d1c2b2]">Regolazione Fuoco / Distanza</label>
+                        <span id="focus-value" class="text-xs font-mono text-amber-300 bg-[#1a120f] px-2 py-0.5 rounded border border-[#4a3324]">15.0 cm</span>
+                    </div>
+                    <input id="focus-slider" type="range" min="0" max="100" value="50" oninput="updateFocus(this.value)" class="w-full h-2 bg-[#1a120f] rounded-lg appearance-none cursor-pointer accent-[#b8860b]">
+                    <div class="flex justify-between text-[10px] text-[#8a7565] mt-1">
+                        <span>Vicina (Zoom+)</span>
+                        <span>Lontana (Zoom-)</span>
+                    </div>
+                </div>
+
+                <!-- Selettore Diapositive Storiche -->
+                <div class="mb-5">
+                    <label class="block text-xs font-medium text-[#d1c2b2] mb-2">Collezione Diapositive Storiche</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="selectSlide(0)" id="slide-btn-0" class="p-2 rounded-xl border border-[#5c4130] bg-[#312117] hover:bg-[#4a3324] text-xs text-center transition flex flex-col items-center gap-1 group">
+                            <div class="w-full h-10 rounded overflow-hidden bg-black">
+                                <img src="https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=200&q=80" alt="Londra" class="w-full h-full object-cover vintage-filter">
+                            </div>
+                            <span class="text-[11px] text-[#e6d5be] font-medium truncate w-full">Big Ben</span>
+                        </button>
+                        <button onclick="selectSlide(1)" id="slide-btn-1" class="p-2 rounded-xl border border-[#4a3324] bg-[#1a120f] hover:bg-[#4a3324] text-xs text-center transition flex flex-col items-center gap-1 group">
+                            <div class="w-full h-10 rounded overflow-hidden bg-black">
+                                <img src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=200&q=80" alt="Venezia" class="w-full h-full object-cover vintage-filter">
+                            </div>
+                            <span class="text-[11px] text-[#c5b5a4] font-medium truncate w-full">Venezia</span>
+                        </button>
+                        <button onclick="selectSlide(2)" id="slide-btn-2" class="p-2 rounded-xl border border-[#4a3324] bg-[#1a120f] hover:bg-[#4a3324] text-xs text-center transition flex flex-col items-center gap-1 group">
+                            <div class="w-full h-10 rounded overflow-hidden bg-black">
+                                <img src="https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=200&q=80" alt="Taj Mahal" class="w-full h-full object-cover vintage-filter">
+                            </div>
+                            <span class="text-[11px] text-[#c5b5a4] font-medium truncate w-full">Taj Mahal</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Carica Tue Foto -->
+                <div>
+                    <label class="block text-xs font-medium text-[#d1c2b2] mb-1.5">Carica Immagini Personali (Stereo Pair)</label>
+                    <label class="flex flex-col items-center justify-center w-full h-16 border-2 border-dashed border-[#5c4130] rounded-xl cursor-pointer bg-[#1a120f] hover:bg-[#312117] transition">
+                        <div class="flex items-center space-x-2 text-xs text-[#a38f7d]">
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>Seleziona coppia di foto (SX / DX)</span>
+                        </div>
+                        <input type="file" id="custom-photo-input" accept="image/*" multiple class="hidden" onchange="handleCustomUpload(event)">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Sezione Educativa / Storica -->
+            <div class="bg-[#231a17] rounded-2xl border border-[#4a3324] p-4 shadow-xl">
+                <h3 class="serif-font text-lg font-bold text-[#e6d5be] mb-2 border-b border-[#4a3324] pb-2">
+                    Il Principio Stereoscopico
+                </h3>
+                <div class="space-y-2 text-xs text-[#d1c2b2] leading-relaxed">
+                    <p>Inventato da <strong>Sir David Brewster</strong> nel 1849, questo dispositivo ha reso popolare la fotografia tridimensionale nell'epoca vittoriana.</p>
+                    
+                    <ul class="space-y-1.5 mt-2">
+                        <li class="flex items-start gap-2">
+                            <span class="text-amber-400 font-bold">•</span>
+                            <span><strong>Distanza Interoculare (~6,5 cm):</strong> Due foto riprese da angoli leggermente sfalsati simulano esattamente la visione dei nostri due occhi.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-amber-400 font-bold">•</span>
+                            <span><strong>Lenti Prismatiche:</strong> Ingrandiscono l'immagine e deviano i raggi luminosi, costringendo gli occhi a convergere o divergere per fondere le scene.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-amber-400 font-bold">•</span>
+                            <span><strong>Setto Centrale:</strong> Impedisce all'occhio sinistro di vedere l'immagine destra e viceversa, creando l'illusione di profondità totale.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer Museale -->
+    <footer class="bg-[#1a120f] border-t border-[#4a3324] py-3 text-center text-xs text-[#8a7565]">
+        <p>Galleria Storica della Fotografia &bull; Simulatore Educativo Interattivo</p>
+    </footer>
+
+    <!-- Script di Gestione Interattiva -->
+    <script>
+        // Database di diapositive storiche (coppie stereo)
+        const slidesDatabase = [
+            {
+                left: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=600&q=80",
+                right: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=600&q=80",
+                title: "Big Ben & Westminster, Londra (1880)"
+            },
+            {
+                left: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=600&q=80",
+                right: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=600&q=80",
+                title: "Canale e Gondole, Venezia (1892)"
+            },
+            {
+                left: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=600&q=80",
+                right: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=600&q=80",
+                title: "Taj Mahal, Agra (1875)"
+            }
+        ];
+
+        let currentSlideIndex = 0;
+
+        // Inizializzazione applicazione
+        window.onload = function() {
+            loadSlideData(slidesDatabase[0]);
+            updateFocus(50);
+        };
+
+        // Cambio modalità di visualizzazione (Overview vs Immersive)
+        function switchMode(mode) {
+            const overviewEl = document.getElementById('view-overview');
+            const immersiveEl = document.getElementById('view-immersive');
+            const btnOverview = document.getElementById('btn-mode-overview');
+            const btnImmersive = document.getElementById('btn-mode-immersive');
+
+            if (mode === 'overview') {
+                overviewEl.classList.remove('hidden');
+                immersiveEl.classList.add('hidden');
+                btnOverview.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 bg-[#785942] text-[#f3efe6] shadow";
+                btnImmersive.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md text-[#a38f7d] hover:text-[#f3efe6] transition-all duration-200";
+            } else {
+                overviewEl.classList.add('hidden');
+                immersiveEl.classList.remove('hidden');
+                btnImmersive.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 bg-[#785942] text-[#f3efe6] shadow";
+                btnOverview.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md text-[#a38f7d] hover:text-[#f3efe6] transition-all duration-200";
+            }
+        }
+
+        // Carica i dati della diapositiva corrente negli elementi visivi
+        function loadSlideData(slideObj) {
+            document.getElementById('slide-thumb-left').src = slideObj.left;
+            document.getElementById('slide-thumb-right').src = slideObj.right;
+            document.getElementById('immersive-img-left').src = slideObj.left;
+            document.getElementById('immersive-img-right').src = slideObj.right;
+        }
+
+        // Selezione diapositive storiche dai pulsanti rapidi
+        function selectSlide(index) {
+            currentSlideIndex = index;
+            loadSlideData(slidesDatabase[index]);
+
+            // Aggiorna stili attivi dei bottoni
+            for(let i=0; i<3; i++) {
+                const btn = document.getElementById(`slide-btn-${i}`);
+                if(i === index) {
+                    btn.className = "p-2 rounded-xl border border-[#5c4130] bg-[#312117] hover:bg-[#4a3324] text-xs text-center transition flex flex-col items-center gap-1 shadow";
+                } else {
+                    btn.className = "p-2 rounded-xl border border-[#4a3324] bg-[#1a120f] hover:bg-[#4a3324] text-xs text-center transition flex flex-col items-center gap-1";
+                }
+            }
+        }
+
+        // Gestione scorrimento slider fuoco / distanza
+        function updateFocus(val) {
+            // Conversione del valore (0-100) in distanza in centimetri (da 10cm a 25cm)
+            const cm = (10 + (val / 100) * 15).toFixed(1);
+            document.getElementById('focus-value').innerText = `${cm} cm`;
+
+            // Muove la barra trasversale lungo l'asse simulato e scala le immagini
+            const slidingBar = document.getElementById('sliding-bar');
+            const thumbLeft = document.getElementById('slide-thumb-left');
+            const thumbRight = document.getElementById('slide-thumb-right');
+            const immLeft = document.getElementById('immersive-img-left');
+            const immRight = document.getElementById('immersive-img-right');
+
+            // Calcolo traslazione verticale (spostamento sul corpo dello stereoscopio)
+            // Valore 0 = più vicino al visore; 100 = più lontano
+            const translateY = -((val - 50) * 0.6); 
+            slidingBar.style.transform = `translateY(${translateY}px)`;
+
+            // Calcolo scala immagine per simulare la messa a fuoco ottica
+            const scale = 1 + ((50 - val) / 250);
+            thumbLeft.style.transform = `scale(${scale})`;
+            thumbRight.style.transform = `scale(${scale})`;
+            immLeft.style.transform = `scale(${scale * 1.05})`;
+            immRight.style.transform = `scale(${scale * 1.05})`;
+        }
+
+        // Gestione caricamento foto personalizzate dall'utente
+        function handleCustomUpload(event) {
+            const files = event.target.files;
+            if (files && files.length > 0) {
+                const reader1 = new FileReader();
+                reader1.onload = function(e) {
+                    const imgLeft = e.target.result;
+                    // Se l'utente carica 2 file o 1 file singolo
+                    if (files.length >= 2) {
+                        const reader2 = new FileReader();
+                        reader2.onload = function(e2) {
+                            const customSlide = { left: imgLeft, right: e2.target.result, title: "Foto Personali" };
+                            loadSlideData(customSlide);
+                        }
+                        reader2.readAsDataURL(files[1]);
+                    } else {
+                        // Se carica un solo file, duplica per simulare la coppia stereo
+                        const customSlide = { left: imgLeft, right: imgLeft, title: "Foto Personale (Singola)" };
+                        loadSlideData(customSlide);
+                    }
+                }
+                reader1.readAsDataURL(files[0]);
+            }
+        }
+    </script>
+</body>
+</html>
